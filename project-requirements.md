@@ -93,6 +93,7 @@ Azure Monitor
 ## Project Milestones
 ### Milestone 1 (Week 6)
 #### Project Proposal (5%)
+Submit  report (the equivalent of a technical paper using standard IEEE/ACM style) in pdf. Every team member should submit the same file.
 #### Deliverables:
 1. Problem definition
 2. Architecture Diagram
