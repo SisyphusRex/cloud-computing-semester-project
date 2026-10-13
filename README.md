@@ -43,4 +43,4 @@ API reference and configuration: [services/README.md](services/README.md). Run `
 | `infra/terraform/` | `bootstrap/` (state + CI identities), `modules/`, `envs/dev/` |
 | `.github/workflows/` | CI, service deploy, frontend deploy, Terraform |
 | `scripts/` | Dev and cost-control helpers |
-| `docs/` | Proposal, architecture, ADRs, runbooks, milestone write-ups |
+| `docs/` | Proposal, [implementation plan](docs/implementation-plan.md), ADRs, runbooks, milestone write-ups |
