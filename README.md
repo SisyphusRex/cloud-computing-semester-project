@@ -18,6 +18,19 @@ CS 6030 Cloud Computing semester project, Western Michigan University, Fall 2026
 
 Full rationale: [docs/proposal/](docs/proposal/).
 
+## Quickstart
+
+Needs [uv](https://docs.astral.sh/uv/getting-started/installation/) and Docker.
+
+```sh
+make install   # Python environment for the services
+make test-db   # all tests against a local Postgres container
+make dev-up    # Postgres + migrations + ingest (:8081) + search (:8082)
+curl -H 'Authorization: Bearer dev:student@example.edu' localhost:8082/search/courses
+```
+
+API reference and configuration: [services/README.md](services/README.md). Run `make help` for every target.
+
 ## Repository layout
 
 | Path | Contents |

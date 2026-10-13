@@ -1,0 +1,64 @@
+# Local stack: Postgres, migrations, and both APIs.
+# Uses dev auth ("Authorization: Bearer dev:<email>"); never reuse these settings in GKE.
+name: lecture-indexer
+
+x-api-env: &api-env
+  DATABASE_URL: postgresql://li:li@db:5432/li
+  LI_DEV_AUTH: "1"
+  PROFESSOR_EMAILS: prof@example.edu
+  CORS_ORIGINS: http://localhost:5173
+
+x-ingest-build: &ingest-build
+  context: .
+  dockerfile: services/ingest/Dockerfile
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: li
+      POSTGRES_PASSWORD: li
+      POSTGRES_DB: li
+    ports:
+      - "55432:5432" # not 5432, to avoid clashing with a host Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U li -d li"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  migrate:
+    build: *ingest-build
+    image: li-ingest:dev
+    command: ["li-migrate", "/app/migrations"]
+    environment: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ingest:
+    build: *ingest-build
+    image: li-ingest:dev
+    environment: *api-env
+    ports:
+      - "8081:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  search:
+    build:
+      context: .
+      dockerfile: services/search/Dockerfile
+    image: li-search:dev
+    environment: *api-env
+    ports:
+      - "8082:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

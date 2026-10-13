@@ -1,0 +1,17 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE an instructor-uploaded track
+
+00:00:01.000 --> 00:00:04.500
+Welcome back to CS 6030.
+
+00:00:04.500 --> 00:00:09.000
+Today we start with <i>lambda</i> calculus &amp; its
+
+00:00:09.000 --> 00:00:12.250
+reduction rules.
+
+03:22.000 --> 03:25.000
+Lambda calculus is the basis of functional languages.

@@ -1,0 +1,9 @@
+# Images only need the Python workspace and the migrations.
+*
+!services/
+!db/migrations/
+services/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/tests

@@ -1,0 +1,22 @@
+[tool.uv.workspace]
+members = ["common", "ingest", "search"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["common/tests", "ingest/tests", "search/tests"]
+markers = ["db: needs a Postgres database at DATABASE_URL"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["li_common", "ingest", "search"]

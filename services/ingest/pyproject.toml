@@ -1,0 +1,16 @@
+[project]
+name = "ingest"
+version = "0.1.0"
+description = "Lecture Indexer Ingest API"
+requires-python = ">=3.12"
+dependencies = [
+    "li-common",
+    "gunicorn>=22",
+]
+
+[tool.uv.sources]
+li-common = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
