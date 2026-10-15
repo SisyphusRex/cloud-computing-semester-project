@@ -75,7 +75,7 @@ Per the proposal:
 - **Deploy workflows not written yet.** Only `ci.yml` exists. The team's empty placeholders for `terraform.yml`, `services-deploy.yml`, and `frontend-deploy.yml` were removed on 2026-10-15, because GitHub reports an empty workflow file as a failed run on every push. Recreate them at deploy time (see "After that: deploy"); they need bootstrap applied (GitHub variables, the `prod` environment).
 - **Deploy order.** The migrate overlay doesn't include the `li` Namespace, so the deploy workflow must create the namespace (or apply the app overlay) before running the migrate Job.
 - **CSP `connect-src`** in `frontend/staticwebapp.config.json` allows `https://*.sslip.io`; narrow it to the real `api_hostname` once known.
-- **Tooling.** Everyone needs [uv](https://docs.astral.sh/uv/getting-started/installation/), Docker, and Node 22. `make test-db` runs the Python suite against the compose Postgres on port 55432; `make k8s-check` needs `kustomize` and `kubeconform` on `PATH`.
+- **Tooling.** Required tools and install steps for Linux and WSL2 are in [local-development.md](local-development.md); `make doctor` checks them.
 
 ## Done: step 3, Terraform
 

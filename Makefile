@@ -5,11 +5,14 @@ KUBECONFORM ?= kubeconform
 # Postgres from docker-compose; tests create and drop their own schemas in it.
 TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
-.PHONY: help install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
+.PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
 	frontend-install frontend-dev frontend-test k8s-check
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
+
+doctor: ## Check that the tools needed to run the app are installed
+	@scripts/check-prereqs.sh
 
 install: ## Create services/.venv with all workspace packages
 	cd services && $(UV) sync --all-packages

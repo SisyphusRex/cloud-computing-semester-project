@@ -18,24 +18,33 @@ CS 6030 Cloud Computing semester project, Western Michigan University, Fall 2026
 
 Full rationale: [docs/proposal/](docs/proposal/).
 
-## Quickstart
+## Run locally
 
-Needs [uv](https://docs.astral.sh/uv/getting-started/installation/), Docker, and Node 22.
+Linux (Ubuntu/Debian) or Windows through WSL2. Install these first:
+
+| Tool | Version | Needed for |
+|---|---|---|
+| git, make, bash, curl, python3 | any recent | everything |
+| Docker Engine with the Compose plugin | Compose v2.20+ | Postgres and both APIs (`make dev-up`) |
+| Node.js with npm | 22.22+ | the frontend |
+| [uv](https://docs.astral.sh/uv/) | latest | only Python tests and lint |
+
+Install commands for each tool, the WSL2 setup, and troubleshooting are in **[docs/local-development.md](docs/local-development.md)**.
 
 ```sh
-make install   # Python environment for the services
-make test-db   # all tests against a local Postgres container
-make dev-up    # Postgres + migrations + ingest (:8081) + search (:8082)
-make smoke     # end-to-end check of the running stack
+make doctor          # checks the tools above
+# If your user isn't in the docker group: export COMPOSE="sudo docker compose"
+make dev-up          # Postgres + migrations + Ingest API (:8081) + Search API (:8082)
+make smoke           # end-to-end check of the running APIs
 
-cp frontend/.env.example frontend/.env.local   # dev sign-in by default
+cp frontend/.env.example frontend/.env.local   # first time; dev sign-in
 make frontend-install
-make frontend-dev   # http://localhost:5173; sign in as prof@example.edu or student@example.edu
+make frontend-dev    # http://localhost:5173
 ```
 
-Dev sign-in can create courses and search, but registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [implementation plan](docs/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying).
+Sign in as `prof@example.edu` (professor) or `student@example.edu`. Registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [implementation plan](docs/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying). Stop with `Ctrl-C` and `make dev-down`.
 
-API reference and configuration: [services/README.md](services/README.md). Run `make help` for every target. CI (`.github/workflows/ci.yml`) runs the same checks on every push.
+API reference and configuration: [services/README.md](services/README.md). Run `make help` for every target. CI (`.github/workflows/ci.yml`) runs the tests and checks on every push.
 
 ## Repository layout
 
