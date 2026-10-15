@@ -6,7 +6,7 @@
 | User | Theodore Podewil |
 | Dates | 2026-10-13 to 2026-10-15 (one session, resumed after a break) |
 | Branch | `development` (pushed to `origin/development`) |
-| Commits produced | `c40b2b7`, `73ed7d8`, `1df69d0`, `e4d87e4`, `d597cf7`, `e3d2875`, `10504ea` |
+| Commits produced | `c40b2b7`, `73ed7d8`, `1df69d0`, `e4d87e4`, `d597cf7`, `e3d2875`, `10504ea`, `296389e`, `762892a` |
 
 Each entry gives the prompt exactly as typed, then a summary of what Claude did in response. Where Claude asked a multiple-choice question, the answer chosen is noted.
 
@@ -244,4 +244,61 @@ Claude stopped both APIs, the frontend dev server, and the throwaway Postgres, a
 
 > can you create a markdown file in the directory ai_usage that is a collection of each of my prompts to you in this session and a summary of your response to each prompt?
 
-Claude created this file.
+Claude created this file in a new `ai_usage/` directory, with one entry per prompt and the answers to its multiple-choice questions. It left the file uncommitted and noted two choices the user might change: the log includes Claude's mistakes and their fixes, and the file is named by the session's start date.
+
+## 33. Move the log under docs
+
+> move the ai_usage directory to docs/
+
+Claude moved the directory to `docs/ai_usage/`. Nothing else linked to the old location.
+
+## 34. Commit the log
+
+> commit and push
+
+Committed the log as `296389e` and pushed it to `development`.
+
+## 35. Running the app locally
+
+> How do i run the entire application locally?
+
+Claude described two ways:
+- **with Docker** (`make dev-up`, `make smoke`, then the frontend steps);
+- **without Docker,** using the system Postgres and running both APIs with gunicorn in separate terminals.
+
+It pointed out that the user's account isn't in the `docker` group and that `uv` isn't installed, and listed the one-time setup for each. It noted that registering a lecture needs real Google sign-in even locally.
+
+## 36. Docker with sudo
+
+> Assume that I will run docker using sudo, how will running the app locally change?
+
+Claude explained that only the Docker commands change: set `COMPOSE="sudo docker compose"` (the Makefile already supports this) instead of running `sudo make`, which would leave root-owned files in the repo. The frontend steps and ports stay the same, and `make dev-up` doesn't need `uv`. It also noted that `sudo docker` and the `docker` group are equally powerful; the difference is convenience.
+
+## 37. Plan the local-setup docs
+
+> Can you make a plan for adding how to run the application locally to the readme?  We need to explicitly tell the developers what they need installed on their system as well.
+
+In planning mode, Claude checked what each `make` target and script actually needs, and found two gaps in the old Quickstart: React Router 8 requires **Node 22.22+** (not just "22"), and the smoke test also needs `curl` and `python3`. It asked three questions:
+- **Platforms:** Linux and Windows (WSL2).
+- **Location:** a short README section plus a separate guide.
+- **Backend:** Docker only.
+
+After the plan was approved, Claude:
+- replaced the README's "Quickstart" with "Run locally" (a prerequisites table and the command sequence);
+- wrote `docs/local-development.md`: Linux and WSL2 install steps, Docker permission options, day-to-day commands, tests, troubleshooting;
+- added `make doctor` (`scripts/check-prereqs.sh`), which checks each tool and version without ever prompting for a password;
+- declared Node ≥ 22.22 in `frontend/package.json`.
+
+It tested `make doctor` on the user's machine and on a simulated machine with old and missing tools (5 problems reported, exit 1), and checked that every link and anchor resolves.
+
+## 38. Commit the local-setup docs
+
+> yes
+
+Committed as `762892a` and pushed to `development`; CI passed.
+
+## 39. Update this log
+
+> can you add my latest prompts and your responses to the ai_usage directory?
+
+Claude added entries 33–39 to this file and updated the list of commits.
