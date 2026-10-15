@@ -47,6 +47,6 @@ API reference and configuration: [services/README.md](services/README.md). Run `
 | `db/migrations/` | Database schema migrations |
 | `deploy/k8s/` | Kustomize manifests (`base/`, `overlays/prod/`) |
 | `infra/terraform/` | `bootstrap/` (state + CI identities), `modules/`, `envs/prod/` |
-| `.github/workflows/` | CI, service deploy, frontend deploy, Terraform |
+| `.github/workflows/` | `ci.yml` (lint, tests, image builds, manifest and Terraform checks); deploy workflows come with the first deployment |
 | `scripts/` | Dev and cost-control helpers |
 | `docs/` | Proposal, [implementation plan](docs/implementation-plan.md), ADRs, runbooks, milestone write-ups |
