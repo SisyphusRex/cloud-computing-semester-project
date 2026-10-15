@@ -39,8 +39,8 @@ API reference and configuration: [services/README.md](services/README.md). Run `
 | `services/` | uv workspace: `common/` (shared `li_common` package), `ingest/`, `search/` |
 | `backup/` | `pg_dump` → encrypt → Azure Blob CronJob image |
 | `db/migrations/` | Database schema migrations |
-| `deploy/k8s/` | Kustomize manifests (`base/`, `overlays/dev/`) |
-| `infra/terraform/` | `bootstrap/` (state + CI identities), `modules/`, `envs/dev/` |
+| `deploy/k8s/` | Kustomize manifests (`base/`, `overlays/prod/`) |
+| `infra/terraform/` | `bootstrap/` (state + CI identities), `modules/`, `envs/prod/` |
 | `.github/workflows/` | CI, service deploy, frontend deploy, Terraform |
 | `scripts/` | Dev and cost-control helpers |
 | `docs/` | Proposal, [implementation plan](docs/implementation-plan.md), ADRs, runbooks, milestone write-ups |

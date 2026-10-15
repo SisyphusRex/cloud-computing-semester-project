@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import requests
 
-from li_common.logging import log_event
+from li_common.logs import log_event
 
 logger = logging.getLogger(__name__)
 

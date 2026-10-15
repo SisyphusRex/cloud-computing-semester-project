@@ -7,7 +7,7 @@ from ingest.captions import parse_segments
 from li_common import db
 from li_common.auth import require_user
 from li_common.errors import error_response
-from li_common.logging import log_event
+from li_common.logs import log_event
 from li_common.schemas import CourseCreate, LectureCreate
 
 logger = logging.getLogger(__name__)

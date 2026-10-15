@@ -33,6 +33,7 @@ Locally, `LI_DEV_AUTH=1` accepts `Authorization: Bearer dev:<email>` instead of 
 | `CORS_ORIGINS` | Comma-separated frontend origins (the Static Web Apps URL) |
 | `LI_DEV_AUTH` | `1` enables dev tokens; local only |
 | `DB_POOL_SIZE` | Connections per gunicorn worker (default 4, matching `--threads 4`) |
+| `LI_MIGRATE_GRANTS` | `li-migrate` only: `role=user,...` pairs granting the `li_ingest_role` / `li_search_role` group roles to the services' database users (Terraform output `migrate_grants`) |
 
 Any variable can instead be given as `NAME_FILE`, a path to a file holding the value (how Secret Manager mounts secrets).
 

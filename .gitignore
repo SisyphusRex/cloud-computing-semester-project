@@ -224,6 +224,9 @@ __marimo__/
 *.tfstate
 *.tfstate.*
 *.tfplan
+# Real values (project/subscription IDs) stay local; examples are committed.
+*.tfvars
+!*.tfvars.example
 
 # Node
 node_modules/

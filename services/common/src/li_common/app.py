@@ -7,7 +7,7 @@ from flask_cors import CORS
 from li_common import db, health
 from li_common.config import Settings
 from li_common.errors import register_error_handlers
-from li_common.logging import configure_logging, init_request_logging
+from li_common.logs import configure_logging, init_request_logging
 
 
 class JSONProvider(DefaultJSONProvider):

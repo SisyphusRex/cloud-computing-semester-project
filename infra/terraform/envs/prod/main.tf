@@ -1,0 +1,93 @@
+locals {
+  services = [
+    "compute.googleapis.com",
+    "container.googleapis.com",
+    "sqladmin.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "secretmanager.googleapis.com",
+    "youtube.googleapis.com",
+    "monitoring.googleapis.com",
+    "logging.googleapis.com",
+  ]
+}
+
+resource "google_project_service" "this" {
+  for_each           = toset(local.services)
+  service            = each.value
+  disable_on_destroy = false
+}
+
+module "network" {
+  source     = "../../modules/gcp-network"
+  name       = var.name
+  region     = var.gcp_region
+  depends_on = [google_project_service.this]
+}
+
+module "gke" {
+  source              = "../../modules/gke"
+  project_id          = var.gcp_project_id
+  name                = var.name
+  region              = var.gcp_region
+  network_id          = module.network.network_id
+  subnet_id           = module.network.subnet_id
+  pods_range_name     = module.network.pods_range_name
+  services_range_name = module.network.services_range_name
+}
+
+module "artifact_registry" {
+  source  = "../../modules/artifact-registry"
+  name    = var.name
+  region  = var.gcp_region
+  readers = { gke-nodes = "serviceAccount:${module.gke.node_service_account}" }
+  writers = { ci-deploy = "serviceAccount:${var.ci_deploy_service_account}" }
+}
+
+# Ephemeral: generated during the run and passed only to write-only arguments,
+# so the password never lands in Terraform state. It is applied when
+# db_admin_password_version changes (bump it to rotate).
+ephemeral "random_password" "db_admin" {
+  length  = 32
+  special = false
+}
+
+module "cloudsql" {
+  source                 = "../../modules/cloudsql"
+  name                   = "${var.name}-pg"
+  region                 = var.gcp_region
+  network_id             = module.network.network_id
+  tier                   = var.cloudsql_tier
+  admin_password         = ephemeral.random_password.db_admin.result
+  admin_password_version = var.db_admin_password_version
+  iam_service_accounts = {
+    ingest = google_service_account.workload["ingest"].email
+    search = google_service_account.workload["search"].email
+  }
+  depends_on = [module.network]
+}
+
+module "secrets" {
+  source = "../../modules/secrets"
+  secrets = {
+    db-admin-password = { accessors = { migrate = google_service_account.workload["migrate"].member } }
+  }
+  secret_values = {
+    db-admin-password = ephemeral.random_password.db_admin.result
+  }
+  secret_value_versions = {
+    db-admin-password = var.db_admin_password_version
+  }
+  depends_on = [google_project_service.this]
+}
+
+# The API's public address. Without a domain of our own, sslip.io maps
+# <a-b-c-d>.sslip.io to a.b.c.d, which is enough for a Google-managed certificate.
+resource "google_compute_global_address" "api" {
+  name       = "${var.name}-api"
+  depends_on = [google_project_service.this]
+}
+
+locals {
+  api_hostname = "${replace(google_compute_global_address.api.address, ".", "-")}.sslip.io"
+}
