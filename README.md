@@ -20,16 +20,22 @@ Full rationale: [docs/proposal/](docs/proposal/).
 
 ## Quickstart
 
-Needs [uv](https://docs.astral.sh/uv/getting-started/installation/) and Docker.
+Needs [uv](https://docs.astral.sh/uv/getting-started/installation/), Docker, and Node 22.
 
 ```sh
 make install   # Python environment for the services
 make test-db   # all tests against a local Postgres container
 make dev-up    # Postgres + migrations + ingest (:8081) + search (:8082)
-curl -H 'Authorization: Bearer dev:student@example.edu' localhost:8082/search/courses
+make smoke     # end-to-end check of the running stack
+
+cp frontend/.env.example frontend/.env.local   # dev sign-in by default
+make frontend-install
+make frontend-dev   # http://localhost:5173; sign in as prof@example.edu or student@example.edu
 ```
 
-API reference and configuration: [services/README.md](services/README.md). Run `make help` for every target.
+Dev sign-in can create courses and search, but registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [implementation plan](docs/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying).
+
+API reference and configuration: [services/README.md](services/README.md). Run `make help` for every target. CI (`.github/workflows/ci.yml`) runs the same checks on every push.
 
 ## Repository layout
 

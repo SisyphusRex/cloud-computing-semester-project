@@ -230,6 +230,9 @@ __marimo__/
 
 # Node
 node_modules/
+# Vite local settings
+.env.local
+.env.*.local
 .next/
 out/
 

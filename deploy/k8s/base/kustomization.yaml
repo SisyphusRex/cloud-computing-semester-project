@@ -1,0 +1,14 @@
+# Long-running app resources. The migrate Job lives in ../migrate so the
+# deploy workflow can run it to completion before rolling these out.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: li
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: lecture-indexer
+resources:
+  - namespace.yaml
+  - ingest
+  - search
+  - ingress.yaml
+  - networkpolicy.yaml

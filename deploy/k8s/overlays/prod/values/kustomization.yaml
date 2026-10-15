@@ -1,0 +1,40 @@
+# Shared by the app overlay (..) and the migrate overlay (../migrate):
+# turns values.env into the li-config ConfigMap the pods read, and copies the
+# values Kubernetes can't read from a ConfigMap (annotations, hostnames, the
+# secret name) into place.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+configMapGenerator:
+  - name: li-config
+    envs: [values.env]
+    options:
+      disableNameSuffixHash: true
+replacements:
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.INGEST_GSA }
+    targets:
+      - select: { kind: ServiceAccount, name: ingest }
+        fieldPaths:
+          - metadata.annotations.[iam.gke.io/gcp-service-account]
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.SEARCH_GSA }
+    targets:
+      - select: { kind: ServiceAccount, name: search }
+        fieldPaths:
+          - metadata.annotations.[iam.gke.io/gcp-service-account]
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.MIGRATE_GSA }
+    targets:
+      - select: { kind: ServiceAccount, name: migrate }
+        fieldPaths:
+          - metadata.annotations.[iam.gke.io/gcp-service-account]
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.API_HOSTNAME }
+    targets:
+      - select: { kind: Ingress, name: li-api }
+        fieldPaths: [spec.rules.0.host]
+      - select: { kind: ManagedCertificate, name: li-api }
+        fieldPaths: [spec.domains.0]
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.DB_ADMIN_SECRET_VERSION }
+    targets:
+      - select: { kind: SecretProviderClass, name: db-admin }
+        fieldPaths: [spec.parameters.secrets]
+        options:
+          delimiter: '"'
+          index: 1

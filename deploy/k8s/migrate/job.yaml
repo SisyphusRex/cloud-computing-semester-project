@@ -1,0 +1,81 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+  labels:
+    app.kubernetes.io/name: migrate
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: migrate
+    spec:
+      serviceAccountName: migrate
+      restartPolicy: Never
+      nodeSelector:
+        cloud.google.com/gke-spot: "true"
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Native sidecar: stopped automatically once the migrate container exits,
+        # so the Job can complete. No --auto-iam-authn: this logs in as li_admin.
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.26.2
+          restartPolicy: Always
+          args:
+            - --private-ip
+            - --structured-logs
+            - --health-check
+            - --http-address=0.0.0.0
+            - --port=5432
+            - $(CLOUDSQL_CONNECTION_NAME)
+          env:
+            - name: CLOUDSQL_CONNECTION_NAME
+              valueFrom:
+                configMapKeyRef: { name: li-config, key: CLOUDSQL_CONNECTION_NAME }
+          startupProbe:
+            httpGet: { path: /startup, port: 9090 }
+            periodSeconds: 1
+            failureThreshold: 60
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      containers:
+        - name: migrate
+          image: ingest # the ingest image includes db/migrations and li-migrate
+          command: ["/bin/sh", "-c"]
+          # libpq reads PGPASSWORD, so the password never appears in a URL or argument.
+          args:
+            - PGPASSWORD="$(cat /secrets/db-admin-password)" exec li-migrate /app/migrations
+          env:
+            - name: DATABASE_URL
+              value: host=127.0.0.1 port=5432 dbname=li user=li_admin sslmode=disable
+            - name: LI_MIGRATE_GRANTS
+              valueFrom:
+                configMapKeyRef: { name: li-config, key: MIGRATE_GRANTS }
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - name: db-admin
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: db-admin
+          csi:
+            driver: secrets-store-gke.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: db-admin

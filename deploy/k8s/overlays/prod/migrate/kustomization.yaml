@@ -1,0 +1,11 @@
+# Production migrate Job; applied and awaited before the app overlay (..).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../migrate
+components:
+  - ../values
+images:
+  - name: ingest
+    newName: us-central1-docker.pkg.dev/PROJECT_ID/li/ingest
+    newTag: latest

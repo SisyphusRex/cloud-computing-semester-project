@@ -1,0 +1,13 @@
+# Runs before each rollout: applies db/migrations and grants the services'
+# IAM database users their roles. Separate from base/ so the deploy workflow
+# can wait for it to complete first.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: li
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: lecture-indexer
+resources:
+  - serviceaccount.yaml
+  - secretproviderclass.yaml
+  - job.yaml

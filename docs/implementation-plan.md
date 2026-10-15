@@ -11,7 +11,7 @@ Last updated: 2026-10-15.
 | 1 | Move proposal into `docs/proposal/`, README, scaffold the tree | ✅ done (`c40b2b7`) |
 | 2 | `db/migrations`, `services/` (li_common, ingest, search), Dockerfiles, docker-compose, Makefile | ✅ done (`73ed7d8`): 67 tests pass against Postgres 16 |
 | 3 | Terraform: `infra/terraform/bootstrap`, then `envs/prod` | ✅ written and validated (mocked `terraform test` passes); **not applied yet**, see [runbook](runbooks/bootstrap.md) |
-| 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | ⏭ next |
+| 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | 🟡 pre-deploy parts done: `ci.yml`, manifests (validated), frontend (tested). Next: real Google/YouTube test, then the deploy workflows |
 | 5 | Backup CronJob + Azure storage, monitoring module, security review doc | todo |
 
 | Milestone | Due | Needs |
@@ -56,15 +56,26 @@ Per the proposal:
 | **API hostname `<ip-with-dashes>.sslip.io`** on a reserved global IP | A Google-managed certificate needs a hostname; this avoids buying a domain. |
 | **Private nodes and private-IP Cloud SQL**, Cloud NAT for outbound traffic | Nothing but the load balancer is reachable from the internet. NAT is needed for the backup upload to Azure Blob. |
 | Terraform modules pass IAM members as **maps with static keys** | `for_each` keys must be known at plan time; member emails aren't until the service accounts exist. Caught by the mocked `terraform test`. |
+| **Kubernetes values in one file**: `deploy/k8s/overlays/prod/values/values.env` → ConfigMap `li-config`, plus kustomize `replacements` for annotations, the hostname, and the secret name | Pods read values through `configMapKeyRef` and `$(VAR)` expansion; filling in production values after `terraform apply` is a one-file change. |
+| **Cloud SQL Auth Proxy as a native sidecar** (`initContainers` with `restartPolicy: Always`) | Starts before the app and stops after it; in the migrate Job it exits on its own, so the Job can complete. |
+| **Migrate Job in its own kustomization** (`deploy/k8s/migrate`, overlay `overlays/prod/migrate`) | The deploy workflow runs it to completion before rolling out the app. It reads the `li_admin` password from a Secret Manager-mounted file into `PGPASSWORD`, so the password is never in a URL or argument. |
+| **Spot pods, read-only root filesystems, non-root, all capabilities dropped** | Cost and least privilege; gunicorn gets an in-memory `/tmp`. |
+| **Frontend: React 19, Vite 8, React Router 8, TypeScript 6.0** | Current releases; TypeScript stays below 6.1 because typescript-eslint doesn't support newer yet. |
+| **The Vite dev server proxies `/ingest` and `/search`** to the local APIs | The app uses the same paths locally and in production (`VITE_API_BASE` = the API host). |
+| **Search excerpts are rendered without `innerHTML`**: the client splits `excerpt_html` on `<mark>` and emits text nodes | Defense in depth on top of the server's escaping. |
+| **Professor detection**: the frontend calls `GET /ingest/courses`; 403 means student | No extra endpoint needed; roles stay server-side. |
+| **The YouTube access token stays in browser memory** until shortly before it expires | One consent popup per session, never stored. |
 | `li_common.logs`, not `li_common.logging` | A module named `logging` shadows the standard library when Python runs from inside the package folder. |
 
 ## Open items
 
 - **YouTube scope.** The proposal says the professor's YouTube token is requested with a read-only scope, but `captions.list` and `captions.download` only accept `youtube.force-ssl`. The token is used for one request and never stored or logged. Correct this in the M3 security review.
-- **Not yet verified:** `docker build` / `make dev-up`, calls to the real YouTube API, and real Google ID tokens. The tests mock YouTube and Google sign-in.
+- **Not yet verified:** calls to the real YouTube API and real Google ID tokens (tests mock both); the next step below covers them. `docker build` and the compose stack are verified by the `compose` job in `ci.yml` on the first push.
 - **Infrastructure not applied.** Someone with Owner on both clouds follows [runbooks/bootstrap.md](runbooks/bootstrap.md): state bucket, `bootstrap/`, GitHub variables and the `prod` environment, the OAuth client (console only), then `envs/prod`. It needs `gcloud` and `az`. Provisioning starts billing (roughly $40–60/month while running; see the runbook's cost table), so apply close to when step 4 is ready to deploy, and destroy when idle.
-- **Workflow placeholders.** `.github/workflows/{ci,frontend-deploy,services-deploy,terraform}.yml` exist as empty files; fill them in at step 4.
-- **Tooling.** Everyone needs [uv](https://docs.astral.sh/uv/getting-started/installation/) and Docker. `make test-db` runs the full suite against the compose Postgres on port 55432.
+- **Workflow placeholders.** `ci.yml` is done. `terraform.yml`, `services-deploy.yml`, and `frontend-deploy.yml` are still empty; they need bootstrap applied (GitHub variables, the `prod` environment).
+- **Deploy order.** The migrate overlay doesn't include the `li` Namespace, so the deploy workflow must create the namespace (or apply the app overlay) before running the migrate Job.
+- **CSP `connect-src`** in `frontend/staticwebapp.config.json` allows `https://*.sslip.io`; narrow it to the real `api_hostname` once known.
+- **Tooling.** Everyone needs [uv](https://docs.astral.sh/uv/getting-started/installation/), Docker, and Node 22. `make test-db` runs the Python suite against the compose Postgres on port 55432; `make k8s-check` needs `kustomize` and `kubeconform` on `PATH`.
 
 ## Done: step 3, Terraform
 
@@ -81,35 +92,58 @@ infra/terraform/
 │   ├── azure-static-web-app/ # Free tier
 │   ├── monitoring/           # step 5
 │   └── azure-backup-storage/ # step 5
-└── envs/prod/                 # wires the modules; identities.tf (Workload Identity); tests/ (mocked)
+└── envs/prod/                # wires the modules; identities.tf (Workload Identity); tests/ (mocked)
 ```
 
 Checks: `terraform fmt -check -recursive`, `terraform validate` in both roots, `terraform -chdir=infra/terraform/envs/prod test`.
 
-## Next: step 4
+## Step 4 so far: everything that doesn't need the cloud
 
-**Kubernetes (`deploy/k8s`).** Values come from `terraform output` in `envs/prod`:
+**CI (`.github/workflows/ci.yml`)**, on pushes to `main`/`development` and on PRs, with no cloud credentials:
 
-| Manifest | Uses |
+| Job | Checks |
 |---|---|
-| Namespace `li` | must match `k8s_namespace` (Workload Identity bindings are scoped to it) |
-| ServiceAccounts `ingest`, `search`, `migrate` | annotation `iam.gke.io/gcp-service-account` from `workload_service_accounts` |
-| Deployments `ingest`, `search` | image from `image_repository`; Cloud SQL Auth Proxy as a native sidecar with `--auto-iam-authn --private-ip` on `cloudsql.connection_name`; `DATABASE_URL=host=127.0.0.1 dbname=li user=<iam user>`; `CORS_ORIGINS` = `frontend_url`; `GOOGLE_CLIENT_ID`; `PROFESSOR_EMAILS`; probes on `/healthz` and `/readyz`; Spot node selector |
-| HPAs | CPU-based, min 1 |
-| Migrate Job | ingest image, `li-migrate /app/migrations`; proxy **without** `--auto-iam-authn` (it logs in as `li_admin`); password mounted from Secret Manager `db-admin-password`; `LI_MIGRATE_GRANTS` from the `migrate_grants` output |
-| Ingress + ManagedCertificate | static IP `li-api`, host `api_hostname`, paths `/ingest` → ingest, `/search` → search |
-| NetworkPolicy | default deny ingress except from the load balancer to the APIs |
+| `python` | `make lint`; `make test` against a Postgres service container (all DB tests run) |
+| `compose` | `docker compose up --build`, migrations exit 0, then `scripts/smoke-test.sh` (sign-in, roles, course creation, search) |
+| `terraform` | `fmt -check`, `validate` in both roots, mocked `terraform test` |
+| `k8s` | `make k8s-check`: `kustomize build` + `kubeconform -strict` on both overlays |
+| `frontend` | `npm ci`, lint, vitest, production build |
 
-**Workflows.**
-- `ci.yml`: ruff; pytest with a Postgres service container (`DATABASE_URL`); frontend lint and tests; `terraform fmt -check`, `validate`, `test`; `kustomize build`.
+**Kubernetes (`deploy/k8s`)**
+
+```
+deploy/k8s/
+├── base/                 # namespace; ingest/ and search/ (ServiceAccount, Deployment, Service + BackendConfig, HPA);
+│                         #   Ingress + ManagedCertificate + FrontendConfig; NetworkPolicies
+├── migrate/              # ServiceAccount, SecretProviderClass (db-admin-password), Job
+└── overlays/prod/        # app overlay (images); migrate/ overlay; values/ component (values.env → li-config)
+```
+
+Fill `overlays/prod/values/values.env` from `terraform output` (each line names its output) once the infrastructure exists. The deploy workflow sets image tags with `kustomize edit set image`.
+
+**Frontend (`frontend/`)**: React app with Google sign-in (or dev sign-in with `VITE_DEV_AUTH=1`), course list, course search with timestamped links and highlighted excerpts, and a professor page to create courses and register or remove lectures. Run it with `make frontend-dev` against the local APIs. 16 vitest tests cover the API client, excerpt rendering (including escaped markup staying text), search, and lecture registration.
+
+## Next: real Google/YouTube test (free, before deploying)
+
+It needs a person with a YouTube channel that has a captioned video. In the GCP project Terraform will use later:
+
+1. **Enable the YouTube Data API v3.**
+2. **OAuth consent screen**: External, Testing; scopes `openid`, `email`, `profile`, `https://www.googleapis.com/auth/youtube.force-ssl`; add the testers as test users.
+3. **OAuth client** (Web application): authorized JavaScript origin `http://localhost:5173`. The client ID isn't a secret.
+
+Then run locally, without dev auth:
+- APIs: `GOOGLE_CLIENT_ID=<id> PROFESSOR_EMAILS=<your Google email> CORS_ORIGINS=http://localhost:5173` and a database (`make dev-up`, or any Postgres plus `li-migrate`).
+- Frontend: `frontend/.env.local` with `VITE_DEV_AUTH=0` and `VITE_GOOGLE_CLIENT_ID=<id>`, then `make frontend-dev`.
+- Sign in, create a course, register **your own captioned video**, search a word you say in it, and check the link opens at that second. Also try a video you don't own (expect "You can only register videos from your own YouTube channel").
+
+Record what happens here, especially anything about caption tracks (auto-generated vs uploaded) that the mocked tests couldn't show.
+
+## After that: deploy (needs billing)
+
+Apply bootstrap and `envs/prod` ([runbook](runbooks/bootstrap.md)), fill `values.env`, then write the three deploy workflows:
 - `terraform.yml`: on PRs, `plan -refresh=false -lock=false` as `github-plan` / `id-li-github-plan` (`AZURE_PLAN_CLIENT_ID`, `ARM_RESOURCE_PROVIDER_REGISTRATIONS=none`), posted as a PR comment; on push to `main`, a full plan then apply in the `prod` environment as `github-terraform` / `id-li-github`.
-- `services-deploy.yml`: in the `prod` environment, build both images, push to Artifact Registry, run the migrate Job, apply the overlay with the new image tags, as `github-deploy`.
-- `frontend-deploy.yml`: in the `prod` environment, build, fetch the Static Web Apps deploy token with `id-li-github`, deploy. PR previews would need the token outside the environment, so skip them or accept that tradeoff.
-
-**Frontend (`frontend/`).**
-- Google sign-in: an ID token for everyone, plus a `youtube.force-ssl` access token for professors registering lectures.
-- Pages: search (renders `excerpt_html`), course management, lecture registration.
-- The API contract is in [services/README.md](../services/README.md).
+- `services-deploy.yml`: in the `prod` environment, as `github-deploy`: build both images, push to Artifact Registry, create the namespace, run the migrate overlay and wait for the Job, then apply the app overlay with the new image tags and wait for the rollouts.
+- `frontend-deploy.yml`: in the `prod` environment, build with `VITE_API_BASE=https://<api_hostname>` and `VITE_GOOGLE_CLIENT_ID`, fetch the Static Web Apps deploy token with `id-li-github`, deploy. Also add the SWA URL as an authorized origin on the OAuth client.
 
 **Monitoring inputs (for step 5).** The services already log these events as JSON, ready for log-based metrics:
 
@@ -128,7 +162,7 @@ Checks: `terraform fmt -check -recursive`, `terraform validate` in both roots, `
 
 ## Verification target
 
-- `make lint`, `make test-db`, `make dev-up`, then curl with `Bearer dev:<email>`.
-- `terraform -chdir=infra/terraform/envs/prod test` (no credentials), then `plan` against the real project; `kubectl kustomize deploy/k8s/overlays/prod`.
+- `make lint`, `make test-db`, `make dev-up`, `make smoke`; `make frontend-test`; `make k8s-check`.
+- `terraform -chdir=infra/terraform/envs/prod test` (no credentials), then `plan` against the real project; `make k8s-check`.
 - CI green on a PR touching each top-level directory.
 - End to end: sign in on the Static Web Apps URL, register a captioned video, search a spoken term, and the link opens at the right second.

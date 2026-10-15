@@ -1,0 +1,15 @@
+# Production app resources. The deploy workflow sets image tags with
+#   kustomize edit set image ingest=<repo>/ingest:<sha> search=<repo>/search:<sha>
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+components:
+  - values
+images:
+  - name: ingest
+    newName: us-central1-docker.pkg.dev/PROJECT_ID/li/ingest
+    newTag: latest
+  - name: search
+    newName: us-central1-docker.pkg.dev/PROJECT_ID/li/search
+    newTag: latest
