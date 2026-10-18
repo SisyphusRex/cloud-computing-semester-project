@@ -5,23 +5,19 @@ from ingest.captions import Cue, merge_segments, parse_cues, parse_segments
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def test_parse_vtt_times_tags_and_entities():
+def test_parse_youtube_asr_vtt():
     cues = parse_cues((FIXTURES / "lecture4.vtt").read_text())
-    assert cues[0] == Cue(1_000, 4_500, "Welcome back to CS 6030.")
-    assert cues[1].text == "Today we start with lambda calculus & its"
+    # The " " line after the timing doesn't split the cue, so it keeps its start.
+    assert cues[0] == Cue(1_000, 4_490, "welcome back to cs 6030")
+    # Word-timing tags are stripped and entities decoded.
+    assert cues[1] == Cue(4_500, 9_000, "today we start with lambda calculus & its")
+    # Rolling repeats and the 10 ms bridge cues add nothing.
+    assert [c.text for c in cues[2:]] == [
+        "reduction rules",
+        "lambda calculus is the basis of functional languages",
+    ]
     # Hours are optional in VTT: 03:22.000 is 3 min 22 s.
     assert cues[-1].start_ms == 202_000
-
-
-def test_parse_srt():
-    srt = (
-        "1\r\n00:00:01,000 --> 00:00:02,000\r\nFirst line\r\n\r\n"
-        "2\r\n01:00:00,500 --> 01:00:03,000\r\nAn hour in\r\n"
-    )
-    assert parse_cues(srt) == [
-        Cue(1_000, 2_000, "First line"),
-        Cue(3_600_500, 3_603_000, "An hour in"),
-    ]
 
 
 def test_rolling_auto_captions_are_deduplicated():

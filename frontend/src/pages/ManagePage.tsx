@@ -117,7 +117,7 @@ function CourseCard({ course, onChange }: { course: MyCourse; onChange: () => vo
       </h2>
       <form onSubmit={register} className="row">
         <label>
-          YouTube video URL or ID (from your channel, with captions)
+          YouTube video URL or ID (from your channel, with YouTube auto-generated captions)
           <input value={video} onChange={(e) => setVideo(e.target.value)} required />
         </label>
         <button type="submit" disabled={busy}>

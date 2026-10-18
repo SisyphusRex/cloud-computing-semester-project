@@ -17,6 +17,7 @@ class FakeYouTube:
 
     channel = "UC_mine"
     captions = VTT
+    has_asr_track = True
 
     def __init__(self, token):
         assert token == "yt-token"
@@ -28,7 +29,9 @@ class FakeYouTube:
         return {self.channel}
 
     def pick_caption_track(self, video_id):
-        return {"id": "cap1", "snippet": {"language": "en"}}
+        if not self.has_asr_track:
+            raise youtube.NoCaptions("The video has no auto-generated captions")
+        return {"id": "cap1", "snippet": {"language": "en", "trackKind": "asr"}}
 
     def download_captions(self, caption_id):
         return self.captions
@@ -129,6 +132,16 @@ def test_empty_captions_mark_lecture_failed(client, auth, course_id, monkeypatch
     lecture = client.get(f"/ingest/lectures/{resp.json['lecture_id']}", headers=auth(PROF))
     assert lecture.json["status"] == "failed"
     assert lecture.json["error"] == "The caption track is empty"
+
+
+def test_video_without_auto_captions_marks_lecture_failed(client, auth, course_id, monkeypatch):
+    monkeypatch.setattr(FakeYouTube, "has_asr_track", False)
+    resp = register(client, auth, course_id)
+    assert resp.status_code == 422
+    assert resp.json["error"] == "no_captions"
+    lecture = client.get(f"/ingest/lectures/{resp.json['lecture_id']}", headers=auth(PROF))
+    assert lecture.json["status"] == "failed"
+    assert lecture.json["error"] == "The video has no auto-generated captions"
 
 
 def test_delete_lecture(client, auth, course_id):

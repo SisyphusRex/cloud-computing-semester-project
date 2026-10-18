@@ -65,6 +65,7 @@ Per the proposal:
 | **Search excerpts are rendered without `innerHTML`**: the client splits `excerpt_html` on `<mark>` and emits text nodes | Defense in depth on top of the server's escaping. |
 | **Professor detection**: the frontend calls `GET /ingest/courses`; 403 means student | No extra endpoint needed; roles stay server-side. |
 | **The YouTube access token stays in browser memory** until shortly before it expires | One consent popup per session, never stored. |
+| **Only YouTube's auto-generated (ASR) captions**, fetched with `captions.download`; tracks the creator uploaded are ignored, and users never upload caption files to us | One caption source, one format (WebVTT). A video without an ASR track fails with `422 no_captions`. |
 | `li_common.logs`, not `li_common.logging` | A module named `logging` shadows the standard library when Python runs from inside the package folder. |
 
 ## Open items
@@ -125,7 +126,7 @@ Fill `overlays/prod/values/values.env` from `terraform output` (each line names 
 
 ## Next: real Google/YouTube test (free, before deploying)
 
-It needs a person with a YouTube channel that has a captioned video. In the GCP project Terraform will use later:
+It needs a person with a YouTube channel that has a video with auto-generated captions (YouTube creates them some time after upload; check in YouTube Studio → Subtitles). In the GCP project Terraform will use later:
 
 1. **Enable the YouTube Data API v3.**
 2. **OAuth consent screen**: External, Testing; scopes `openid`, `email`, `profile`, `https://www.googleapis.com/auth/youtube.force-ssl`; add the testers as test users.
@@ -134,9 +135,10 @@ It needs a person with a YouTube channel that has a captioned video. In the GCP 
 Then run locally, without dev auth:
 - APIs: `GOOGLE_CLIENT_ID=<id> PROFESSOR_EMAILS=<your Google email> CORS_ORIGINS=http://localhost:5173` and a database (`make dev-up`, or any Postgres plus `li-migrate`).
 - Frontend: `frontend/.env.local` with `VITE_DEV_AUTH=0` and `VITE_GOOGLE_CLIENT_ID=<id>`, then `make frontend-dev`.
-- Sign in, create a course, register **your own captioned video**, search a word you say in it, and check the link opens at that second. Also try a video you don't own (expect "You can only register videos from your own YouTube channel").
+- Sign in, create a course, register **your own video with auto-generated captions**, search a word you say in it, and check the link opens at that second.
+- Also try a video you don't own (expect "You can only register videos from your own YouTube channel"), and, if you have one, your own video with only uploaded captions (expect "The video has no auto-generated captions").
 
-Record what happens here, especially anything about caption tracks (auto-generated vs uploaded) that the mocked tests couldn't show.
+Record what happens here, especially what the mocked tests couldn't show: whether `captions.download` serves the ASR track for your own video (a 403 there currently surfaces as `not_video_owner`, which would be misleading), and whether its WebVTT matches the fixture `services/ingest/tests/fixtures/lecture4.vtt` (word-timing tags, rolling cues, the `" "` line after each timing). If it differs, replace the fixture with a trimmed real download.
 
 ## After that: deploy (needs billing)
 

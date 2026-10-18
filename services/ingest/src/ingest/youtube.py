@@ -3,6 +3,8 @@
 Calls are made with the professor's OAuth access token, which is used for this
 request only and never stored or logged. captions.list and captions.download
 require the youtube.force-ssl scope and only work for the video's owner.
+Only YouTube's auto-generated (ASR) caption tracks are indexed; tracks uploaded
+by the creator are ignored.
 """
 
 import logging
@@ -95,17 +97,17 @@ class YouTubeClient:
             "captions.list", "/captions", {"part": "snippet", "videoId": video_id}
         ).json()
         tracks = [
-            t for t in data.get("items", []) if t["snippet"].get("status", "serving") == "serving"
+            t
+            for t in data.get("items", [])
+            if t["snippet"].get("trackKind", "").lower() == "asr"
+            and t["snippet"].get("status", "serving") == "serving"
         ]
         if not tracks:
-            raise NoCaptions("The video has no caption tracks")
+            raise NoCaptions("The video has no auto-generated captions")
 
-        def preference(track: dict) -> tuple:
-            s = track["snippet"]
-            return (
-                s.get("language", "").split("-")[0] != language,  # wanted language first
-                s.get("trackKind", "").lower() == "asr",  # uploaded beats auto-generated
-            )
+        def preference(track: dict) -> bool:
+            # Wanted language first, otherwise any auto-generated track.
+            return track["snippet"].get("language", "").split("-")[0] != language
 
         return min(tracks, key=preference)
 

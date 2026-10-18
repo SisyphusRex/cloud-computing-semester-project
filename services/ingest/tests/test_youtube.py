@@ -62,26 +62,38 @@ def test_missing_video():
         c.get_video("abcdefghijk")
 
 
-def test_pick_caption_track_prefers_uploaded_english():
-    tracks = {
-        "items": [
-            {"id": "asr-en", "snippet": {"language": "en", "trackKind": "asr"}},
-            {"id": "std-es", "snippet": {"language": "es", "trackKind": "standard"}},
-            {"id": "std-en", "snippet": {"language": "en-US", "trackKind": "standard"}},
-            {
-                "id": "broken",
-                "snippet": {"language": "en", "trackKind": "standard", "status": "failed"},
-            },
-        ]
-    }
-    c = client({"/captions": FakeResponse(json=tracks)})
-    assert c.pick_caption_track("abcdefghijk")["id"] == "std-en"
+def tracks(*items):
+    return {"items": [{"id": i, "snippet": snippet} for i, snippet in items]}
 
 
-def test_pick_caption_track_falls_back_to_asr():
-    tracks = {"items": [{"id": "asr-en", "snippet": {"language": "en", "trackKind": "asr"}}]}
-    c = client({"/captions": FakeResponse(json=tracks)})
-    assert c.pick_caption_track("abcdefghijk")["id"] == "asr-en"
+def test_pick_caption_track_prefers_english_asr():
+    listing = tracks(
+        ("asr-es", {"language": "es", "trackKind": "asr"}),
+        ("std-en", {"language": "en", "trackKind": "standard"}),
+        ("asr-en-US", {"language": "en-US", "trackKind": "ASR"}),
+        ("broken", {"language": "en", "trackKind": "asr", "status": "failed"}),
+    )
+    c = client({"/captions": FakeResponse(json=listing)})
+    assert c.pick_caption_track("abcdefghijk")["id"] == "asr-en-US"
+
+
+def test_non_english_asr_used_when_no_english():
+    listing = tracks(
+        ("std-en", {"language": "en", "trackKind": "standard"}),
+        ("asr-de", {"language": "de", "trackKind": "asr"}),
+    )
+    c = client({"/captions": FakeResponse(json=listing)})
+    assert c.pick_caption_track("abcdefghijk")["id"] == "asr-de"
+
+
+def test_uploaded_tracks_are_ignored():
+    listing = tracks(
+        ("std-en", {"language": "en", "trackKind": "standard"}),
+        ("forced-en", {"language": "en", "trackKind": "forced"}),
+    )
+    c = client({"/captions": FakeResponse(json=listing)})
+    with pytest.raises(youtube.NoCaptions, match="auto-generated"):
+        c.pick_caption_track("abcdefghijk")
 
 
 def test_no_caption_tracks():

@@ -51,7 +51,7 @@ Every endpoint except the health checks needs `Authorization: Bearer <Google ID 
 | `GET` | `/ingest/lectures/{id}` | | lecture status, including `error` when `failed` |
 | `DELETE` | `/ingest/lectures/{id}` | | `204` |
 
-The YouTube access token needs the `https://www.googleapis.com/auth/youtube.force-ssl` scope (the caption endpoints accept no narrower one). It is used for that request only and never stored or logged. Registering a lecture fails with `403 not_video_owner` unless the video belongs to the signed-in account's channel, `422 no_captions` if it has no usable caption track, and `503 youtube_quota` when the API quota is exhausted. Re-registering a video re-indexes it.
+The YouTube access token needs the `https://www.googleapis.com/auth/youtube.force-ssl` scope (the caption endpoints accept no narrower one). It is used for that request only and never stored or logged. Registering a lecture fails with `403 not_video_owner` unless the video belongs to the signed-in account's channel, `422 no_captions` if it has no auto-generated (ASR) caption track (tracks the creator uploaded are ignored), and `503 youtube_quota` when the API quota is exhausted. Re-registering a video re-indexes it.
 
 ### Search (any signed-in user)
 

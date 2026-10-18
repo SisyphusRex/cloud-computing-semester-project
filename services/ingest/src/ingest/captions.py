@@ -1,4 +1,4 @@
-"""Turn a WebVTT or SRT caption file into timestamped search segments.
+"""Turn WebVTT from YouTube's captions.download into timestamped search segments.
 
 Caption cues are a few seconds long, so a phrase often spans two cues. We merge
 consecutive cues into windows of up to ~20 s; each window keeps the start time
@@ -9,9 +9,9 @@ import html
 import re
 from dataclasses import dataclass
 
-# Accepts both "00:01:02.345" (VTT) and "00:01:02,345" (SRT); hours are optional in VTT.
+# "00:01:02.345 --> 00:01:05.000"; hours are optional in VTT.
 _TIMING = re.compile(
-    r"(?:(\d+):)?(\d{1,2}):(\d{2})[.,](\d{3})\s*-->\s*(?:(\d+):)?(\d{1,2}):(\d{2})[.,](\d{3})"
+    r"(?:(\d+):)?(\d{1,2}):(\d{2})\.(\d{3})\s*-->\s*(?:(\d+):)?(\d{1,2}):(\d{2})\.(\d{3})"
 )
 _TAG = re.compile(r"<[^>]*>")
 _SPACE = re.compile(r"\s+")
@@ -43,7 +43,9 @@ def parse_cues(raw: str) -> list[Cue]:
     raw = raw.lstrip("﻿").replace("\r\n", "\n").replace("\r", "\n")
     cues: list[Cue] = []
     previous_lines: set[str] = set()
-    for block in re.split(r"\n[ \t]*\n", raw):
+    # Cues end at an empty line. Not a whitespace-only one: YouTube ASR cues often
+    # start with a " " line between the timing and the text.
+    for block in re.split(r"\n{2,}", raw):
         lines = block.strip().split("\n")
         timing_index = next((i for i, line in enumerate(lines) if _TIMING.search(line)), None)
         if timing_index is None:
