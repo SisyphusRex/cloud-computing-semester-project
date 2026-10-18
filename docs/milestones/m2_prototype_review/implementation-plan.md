@@ -11,7 +11,7 @@ Last updated: 2026-10-18.
 | 1 | Move proposal into `docs/proposal/`, README, scaffold the tree | ✅ done (`c40b2b7`) |
 | 2 | `db/migrations`, `services/` (li_common, ingest, search), Dockerfiles, docker-compose, Makefile | ✅ done (`73ed7d8`): 67 tests pass against Postgres 16 |
 | 3 | Terraform: `infra/terraform/bootstrap`, then `envs/prod` | ✅ written and validated (mocked `terraform test` passes). Bootstrap applied 2026-10-18 (Azure in `northcentralus` after the region policy refused `eastus2`); GitHub variables and the `prod` environment set. `envs/prod` applied 2026-10-18. See [runbook](../../runbooks/bootstrap.md) |
-| 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | 🟡 everything written: `ci.yml`, manifests (validated), frontend (tested), deploy workflows (linted, not run yet). Real Google/YouTube test passed 2026-10-18. Next: the first deploy ([first-deployment.md](first-deployment.md)) |
+| 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | ✅ done: first release `prod-2026-10-18.1` on 2026-10-18; end-to-end test passed in production ([first-deployment.md](first-deployment.md)) |
 | 5 | Backup CronJob + Azure storage, monitoring module, security review doc | todo |
 
 | Milestone | Due | Needs |
@@ -83,7 +83,6 @@ Per the proposal:
 - **YouTube scope.** The proposal says the professor's YouTube token is requested with a read-only scope, but `captions.list` and `captions.download` only accept `youtube.force-ssl`. The token is used for one request and never stored or logged. Correct this in the M3 security review.
 - **Not yet verified:** calls to the real YouTube API and real Google ID tokens (tests mock both); the next step below covers them. `docker build` and the compose stack are verified by the `compose` job in `ci.yml` on the first push.
 - **Infrastructure not applied.** Someone with Owner on both clouds follows [runbooks/bootstrap.md](../../runbooks/bootstrap.md): state bucket, `bootstrap/`, GitHub variables and the `prod` environment, the OAuth client (console only), then `envs/prod`. It needs `gcloud` and `az`. Provisioning starts billing (roughly $40–60/month while running; see the runbook's cost table), so apply close to when step 4 is ready to deploy. Between test sessions, `make cloud-pause` / `make cloud-resume` cut idle cost to ~$9/month without changing the API hostname; destroy when idle for longer (runbook §7).
-- **Release workflows written but never run.** `release.yml` and `rollback.yml` pass `actionlint` and their scripts are tested with stubs, but they haven't touched a real cloud yet. Before the first release: apply the bootstrap change for `prod-plan` and create that GitHub environment. Expect fixes during the first release ([release process](../../release-process.md)).
 - **Tooling.** Required tools and install steps for Linux and WSL2 are in [local-development.md](../../local-development.md); `make doctor` checks them.
 
 ## Done: step 3, Terraform
