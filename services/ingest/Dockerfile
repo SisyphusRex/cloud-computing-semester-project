@@ -28,4 +28,4 @@ ENV PATH=/app/.venv/bin:$PATH \
     PYTHONUNBUFFERED=1
 USER 10001
 EXPOSE 8080
-CMD ["gunicorn", "--workers", "2", "--threads", "4", "--timeout", "120", "--bind", ":8080", "ingest:create_app()"]
+CMD ["gunicorn", "--no-control-socket", "--workers", "2", "--threads", "4", "--timeout", "120", "--bind", ":8080", "ingest:create_app()"]

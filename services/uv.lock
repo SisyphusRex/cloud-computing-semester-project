@@ -428,7 +428,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "gunicorn", specifier = ">=22" },
+    { name = "gunicorn", specifier = ">=25.1" },
     { name = "li-common", editable = "common" },
 ]
 
@@ -1006,7 +1006,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "gunicorn", specifier = ">=22" },
+    { name = "gunicorn", specifier = ">=25.1" },
     { name = "li-common", editable = "common" },
 ]
 
