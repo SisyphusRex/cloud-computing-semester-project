@@ -97,7 +97,7 @@ Copy the conclusions into the "Results" note in the implementation plan when don
   - **Yes** (2026-10-18): case 3 indexed 37 segments, and only ASR tracks are ever selected.
 - **Does the real VTT match `services/ingest/tests/fixtures/lecture4.vtt`?** (word-timing tags, rolling lines, `" "` line after each timing)
   - **Parses the same** (2026-10-18): no tags or rolling repeats survive in the stored text, so the parser handles the real format. The raw VTT wasn't captured, so the fixture is still unconfirmed byte for byte.
-  - ASR inserts sound tags like `[Music]`; they are indexed as words, and some segments are only `[Music]`. Follow-up: strip `[...]` tags in `captions.py` and drop cues left empty.
+  - ASR inserts sound tags like `[Music]`; they are indexed as words, and some segments are only `[Music]`. Fixed afterwards: `captions.py` now drops `[...]` tags and skips cues left empty.
   - Repeated words ("the the the the the" at ~0:20) are kept; dedup removes only whole repeated lines. Probably the speaker's stammer; check in the video.
 - **Deep-link accuracy** (seconds between the link's start and the word): ~10 s early ("Concourse", 2026-10-18). Expected: links open at the start of a window of up to ~20 s, so a word mid-window plays ~10 s in. Possible follow-up: shorter windows (`max_ms` in `merge_segments`) for tighter links, at the cost of phrases split across segments.
 - **Other surprises / errors:**

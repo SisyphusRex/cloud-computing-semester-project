@@ -44,6 +44,25 @@ and induction
     ]
 
 
+def test_sound_tags_are_dropped():
+    vtt = """WEBVTT
+
+00:00:00.000 --> 00:00:03.000
+[Music]
+
+00:00:03.000 --> 00:00:05.000
+[Music] hey good morning
+
+00:00:05.000 --> 00:00:07.000
+hey good morning
+that was a [ __ ] long flight [Applause]
+"""
+    assert parse_cues(vtt) == [
+        Cue(3_000, 5_000, "hey good morning"),
+        Cue(5_000, 7_000, "that was a long flight"),
+    ]
+
+
 def test_merge_keeps_first_start_and_splits_on_window():
     cues = [Cue(0, 5_000, "a"), Cue(5_000, 15_000, "b"), Cue(15_000, 25_000, "c")]
     segments = merge_segments(cues, max_ms=20_000)

@@ -233,7 +233,7 @@ Run log: [real-youtube-test.md](real-youtube-test.md). Video: "Welcome to Michig
 - **Fixed during the test**: gunicorn 26's control socket failed in the container (`bcd1e71`).
 
 Follow-ups:
-- Strip ASR sound tags such as `[Music]` in `captions.py`; they are indexed as words, and some segments contain nothing else.
+- ~~Strip ASR sound tags such as `[Music]`~~ Done: `captions.py` drops `[...]` tags, and cues left empty are skipped. Lectures indexed before this keep the tags until they are re-registered.
 - Optional: shorter windows (`max_ms` in `merge_segments`) for tighter deep links.
 - M3 security review: the consent screen tells professors the app can "see, edit, and permanently delete" their YouTube videos; explain that only GET calls are made and the token is never stored.
 

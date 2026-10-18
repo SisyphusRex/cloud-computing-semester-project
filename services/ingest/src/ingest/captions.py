@@ -14,6 +14,9 @@ _TIMING = re.compile(
     r"(?:(\d+):)?(\d{1,2}):(\d{2})\.(\d{3})\s*-->\s*(?:(\d+):)?(\d{1,2}):(\d{2})\.(\d{3})"
 )
 _TAG = re.compile(r"<[^>]*>")
+# Sound tags from YouTube ASR: [Music], [Applause], [Laughter], and [ __ ] for
+# censored words. They aren't speech, so they shouldn't match searches.
+_SOUND_TAG = re.compile(r"\[[^\]]*\]")
 _SPACE = re.compile(r"\s+")
 
 
@@ -36,7 +39,8 @@ def _ms(hours: str | None, minutes: str, seconds: str, millis: str) -> int:
 
 
 def _clean(line: str) -> str:
-    return _SPACE.sub(" ", html.unescape(_TAG.sub("", line))).strip()
+    text = _SOUND_TAG.sub(" ", html.unescape(_TAG.sub("", line)))
+    return _SPACE.sub(" ", text).strip()
 
 
 def parse_cues(raw: str) -> list[Cue]:
