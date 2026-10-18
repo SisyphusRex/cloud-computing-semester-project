@@ -11,7 +11,7 @@ Last updated: 2026-10-18.
 | 1 | Move proposal into `docs/proposal/`, README, scaffold the tree | ✅ done (`c40b2b7`) |
 | 2 | `db/migrations`, `services/` (li_common, ingest, search), Dockerfiles, docker-compose, Makefile | ✅ done (`73ed7d8`): 67 tests pass against Postgres 16 |
 | 3 | Terraform: `infra/terraform/bootstrap`, then `envs/prod` | 🟡 written and validated (mocked `terraform test` passes). Bootstrap applied 2026-10-18 (Azure in `northcentralus` after the region policy refused `eastus2`); GitHub variables and the `prod` environment set. `envs/prod` not applied yet. See [runbook](runbooks/bootstrap.md) |
-| 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | 🟡 everything written: `ci.yml`, manifests (validated), frontend (tested), deploy workflows (linted, not run yet). Real Google/YouTube test passed 2026-10-18. Next: apply the infrastructure and do the first deploy |
+| 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | 🟡 everything written: `ci.yml`, manifests (validated), frontend (tested), deploy workflows (linted, not run yet). Real Google/YouTube test passed 2026-10-18. Next: the first deploy ([first-deployment.md](first-deployment.md)) |
 | 5 | Backup CronJob + Azure storage, monitoring module, security review doc | todo |
 
 | Milestone | Due | Needs |
