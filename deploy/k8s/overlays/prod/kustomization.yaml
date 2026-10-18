@@ -2,6 +2,8 @@
 #   kustomize edit set image ingest=<repo>/ingest:<sha> search=<repo>/search:<sha>
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# Also covers li-config, which the values component generates outside base/.
+namespace: li
 resources:
   - ../../base
 components:

@@ -65,6 +65,7 @@ k8s-check: ## Render the Kustomize overlays and validate them against Kubernetes
 		echo "== $$k"; \
 		$(KUSTOMIZE) build $$k > $$out || exit 1; \
 		$(KUBECONFORM) -strict -summary -ignore-missing-schemas < $$out || exit 1; \
+		python3 scripts/check-k8s-namespaces.py < $$out || exit 1; \
 	done
 
 release-diff: ## What the next release would deploy (since the last prod-* tag), for review before merging to main
