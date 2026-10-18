@@ -67,6 +67,7 @@ Per the proposal:
 | **The YouTube access token stays in browser memory** until shortly before it expires | One consent popup per session, never stored. |
 | **Only YouTube's auto-generated (ASR) captions**, fetched with `captions.download`; tracks the creator uploaded are ignored, and users never upload caption files to us | One caption source, one format (WebVTT). A video without an ASR track fails with `422 no_captions`. |
 | **Pause between test sessions instead of destroying**: `make cloud-pause` scales the pods to 0, deletes the Ingress (load balancer), and stops Cloud SQL; Terraform ignores `activation_policy` | Idle cost drops to ~$9/month (SQL storage, reserved IP), and the reserved IP, and with it the API hostname, survives. Destroying changes the hostname, which means editing `values.env`, the CSP and the OAuth origins. Ignoring the on/off state stops a CI apply from restarting a paused database. |
+| **Workflows run on `ubuntu-24.04`**, not `ubuntu-latest` | `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; pinning keeps the runner image from changing under CI while the deploy workflows are written. Use the same label in new workflows, and upgrade all of them together on purpose. |
 | `li_common.logs`, not `li_common.logging` | A module named `logging` shadows the standard library when Python runs from inside the package folder. |
 
 ## Open items

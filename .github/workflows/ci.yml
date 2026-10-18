@@ -13,6 +13,8 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Jobs run on ubuntu-24.04, not ubuntu-latest, so the runner image changes
+# only when we change it (ubuntu-latest moves to Ubuntu 26 from 2026-10-19).
 env:
   UV_VERSION: "0.13.0"
   KUSTOMIZE_VERSION: "v5.8.3"
@@ -21,7 +23,7 @@ env:
 jobs:
   python:
     name: Python lint and tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -48,7 +50,7 @@ jobs:
 
   compose:
     name: Docker images and compose smoke test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Build and start the stack
@@ -64,7 +66,7 @@ jobs:
 
   terraform:
     name: Terraform checks (no credentials)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: infra/terraform
@@ -87,7 +89,7 @@ jobs:
 
   k8s:
     name: Kubernetes manifests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Install kustomize and kubeconform
@@ -102,7 +104,7 @@ jobs:
 
   frontend:
     name: Frontend lint, tests, build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
