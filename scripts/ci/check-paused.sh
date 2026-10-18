@@ -21,12 +21,13 @@ if [[ -n $(gcloud sql instances list --filter="name=$SQL_INSTANCE" --format='val
   fi
 fi
 
-# cloud-pause deletes the Ingress. Applying the app overlay now would re-create
-# it (and the load balancer's cost) while the pods stay at 0. A missing
-# namespace means the first deploy, which is not a pause.
-if [[ ${1:-} == sql+k8s ]] && kubectl get namespace "$NAMESPACE" > /dev/null 2>&1; then
-  if ! kubectl -n "$NAMESPACE" get ingress li-api > /dev/null 2>&1; then
-    reasons+=("Ingress li-api is missing")
+# make cloud-pause marks the namespace (scripts/cloud-power.sh) and deletes the
+# Ingress. Deploying now would re-create the Ingress (and the load balancer's
+# cost) while the pods stay at 0. An explicit marker, not a missing Ingress:
+# a failed first release also leaves a namespace without an Ingress.
+if [[ ${1:-} == sql+k8s ]] && ns=$(kubectl get namespace "$NAMESPACE" -o json 2> /dev/null); then
+  if [[ $(jq -r '.metadata.annotations["lecture-indexer/paused"] // ""' <<< "$ns") == true ]]; then
+    reasons+=("namespace $NAMESPACE is marked paused (make cloud-pause)")
   fi
 fi
 

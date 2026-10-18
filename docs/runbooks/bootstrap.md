@@ -180,7 +180,7 @@ Every push to `main` starts one **Release** run (`release.yml`): a review sheet 
 | `plan` (environment `prod-plan`, no reviewers) | `github-plan` / `id-li-github-plan` | stops the release here with a warning; nobody is asked to approve |
 | `release` (environment `prod`, approval) | `github-terraform` / `id-li-github` for the apply and the backup, then `github-deploy` | — |
 
-The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused when Cloud SQL isn't `ALWAYS`/`RUNNABLE`, or when the namespace exists but the Ingress doesn't. Before the first deploy, nothing counts as paused. Pull requests that touch `infra/terraform/` also get a read-only plan comment from `terraform.yml`.
+The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused when Cloud SQL isn't `ALWAYS`/`RUNNABLE`, or when the `li` namespace carries the `lecture-indexer/paused=true` annotation that `make cloud-pause` sets (and `make cloud-resume` removes last). Before the first deploy, nothing counts as paused. (It used to infer a pause from a missing Ingress, which a failed first release also leaves behind.) Pull requests that touch `infra/terraform/` also get a read-only plan comment from `terraform.yml`.
 
 ### First deploy
 

@@ -63,9 +63,15 @@ app_deployed() {
 
 sql() { run gcloud sql instances patch "$SQL_INSTANCE" --project "$PROJECT" --quiet "$@"; }
 
+# The release and rollback workflows skip while this annotation is set
+# (scripts/ci/check-paused.sh). Set first on pause and removed last on resume,
+# so a half-finished pause or resume still counts as paused.
+PAUSED_ANNOTATION=lecture-indexer/paused
+
 pause() {
   connect
   if app_deployed; then
+    run kubectl --context "$CONTEXT" annotate namespace "$NAMESPACE" "$PAUSED_ANNOTATION=true" --overwrite
     kube scale "${DEPLOYMENTS[@]}" --replicas=0
     kube delete ingress li-api --ignore-not-found
   else
@@ -88,6 +94,7 @@ resume() {
         kubectl --context "$CONTEXT" apply -l app.kubernetes.io/component=ingress -f -
     fi
     for d in "${DEPLOYMENTS[@]}"; do kube rollout status "$d" --timeout=5m; done
+    run kubectl --context "$CONTEXT" annotate namespace "$NAMESPACE" "$PAUSED_ANNOTATION-"
     echo "Resumed. The load balancer takes a few minutes to serve traffic again."
     echo "If a release skipped while paused: GitHub → Actions → Release → Run workflow (main),"
     echo "  or: gh workflow run release.yml --ref main"
