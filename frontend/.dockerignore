@@ -1,0 +1,6 @@
+node_modules
+dist
+# Local settings (dev sign-in, local client ID) must not reach the image.
+.env*
+!.env.example
+Dockerfile

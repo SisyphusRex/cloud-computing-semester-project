@@ -119,3 +119,10 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  frontend-image:
+    name: Frontend image (nginx)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/test-frontend-image.sh

@@ -12,9 +12,9 @@ variable "azure_subscription_id" {
 }
 
 variable "azure_location" {
-  description = "Must be a Static Web Apps region."
+  description = "Azure for Students only allows canadacentral, mexicocentral, northcentralus, francecentral and swedencentral (policy sys.regionrestriction)."
   type        = string
-  default     = "eastus2"
+  default     = "northcentralus"
 }
 
 variable "name" {

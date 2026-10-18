@@ -30,6 +30,11 @@ mock_provider "google" {
       id = "projects/li-test/secrets/db-admin-password"
     }
   }
+  mock_resource "google_cloud_run_v2_service" {
+    defaults = {
+      uri = "https://li-frontend-abc123-uc.a.run.app"
+    }
+  }
   mock_resource "google_artifact_registry_repository" {
     defaults = {
       project = "li-test"
@@ -37,13 +42,7 @@ mock_provider "google" {
   }
 }
 
-mock_provider "azurerm" {
-  mock_resource "azurerm_static_web_app" {
-    defaults = {
-      default_host_name = "happy-tree-0123.azurestaticapps.net"
-    }
-  }
-}
+mock_provider "azurerm" {}
 
 # The real random provider: it needs no credentials, and mocks can't
 # provide ephemeral resources.
@@ -63,8 +62,13 @@ run "wiring" {
   }
 
   assert {
-    condition     = output.frontend_url == "https://happy-tree-0123.azurestaticapps.net"
-    error_message = "frontend_url should be the Static Web App's HTTPS URL"
+    condition     = output.frontend_url == "https://li-frontend-abc123-uc.a.run.app"
+    error_message = "frontend_url should be the Cloud Run service's URL"
+  }
+
+  assert {
+    condition     = module.frontend.name == "li-frontend"
+    error_message = "unexpected Cloud Run service name"
   }
 
   assert {
@@ -98,6 +102,25 @@ run "wiring" {
   assert {
     condition     = length(module.cloudsql.iam_usernames) == 2
     error_message = "only ingest and search get IAM database users"
+  }
+}
+
+run "frontend_access" {
+  command = apply
+
+  # Public site: anyone may invoke it, and that's all anyone gets.
+  assert {
+    condition     = module.frontend.public_member == "allUsers" && module.frontend.public_role == "roles/run.invoker"
+    error_message = "the frontend must be public with run.invoker only"
+  }
+
+  # CI deploys this service only: run.developer on the service, not the project.
+  assert {
+    condition = (
+      module.frontend.deployer_bindings == { ci-deploy = "serviceAccount:github-deploy@li-test.iam.gserviceaccount.com" }
+      && !anytrue([for k, v in google_project_iam_member.workload : v.role == "roles/run.developer"])
+    )
+    error_message = "the deploy SA should get run.developer on the frontend service only"
   }
 }
 

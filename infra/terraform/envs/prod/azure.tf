@@ -1,11 +1,6 @@
+# Azure holds the nightly database backups (step 5: modules/azure-backup-storage).
+# The frontend moved to Cloud Run: docs/adr/0001-frontend-on-cloud-run.md.
 resource "azurerm_resource_group" "this" {
   name     = "rg-${var.name}-prod"
   location = var.azure_location
-}
-
-module "static_web_app" {
-  source              = "../../modules/azure-static-web-app"
-  name                = "swa-${var.name}-prod"
-  resource_group_name = azurerm_resource_group.this.name
-  location            = azurerm_resource_group.this.location
 }

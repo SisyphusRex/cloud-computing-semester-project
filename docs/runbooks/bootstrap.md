@@ -6,7 +6,7 @@ One person does steps 1–5 once. After that, CI runs Terraform (step 4 of the [
 
 - [Terraform](https://developer.hashicorp.com/terraform/install) 1.16.4. With [tfenv](https://github.com/tfutils/tfenv), `infra/terraform/.terraform-version` selects it automatically.
 - [gcloud CLI](https://cloud.google.com/sdk/docs/install) and [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli).
-- A GCP project with billing (GCP credits), and the Azure for Students subscription.
+- A GCP project with billing (GCP credits), and the Azure for Students subscription. That subscription may only deploy to `canadacentral`, `mexicocentral`, `northcentralus`, `francecentral` and `swedencentral` (policy `sys.regionrestriction`); our Azure resources use `northcentralus`. It's why the frontend runs on Cloud Run: [ADR 0001](../adr/0001-frontend-on-cloud-run.md).
 - Owner on both. You need Owner, or Owner plus User Access Administrator in Azure, to create the CI identities and their role assignments.
 
 ## 1. Sign in and pick the project
@@ -51,7 +51,7 @@ terraform apply
 terraform output github_variables
 ```
 
-If Azure reports an unregistered resource provider, register it and re-apply: `az provider register --namespace Microsoft.ManagedIdentity` (also `Microsoft.Web` for Static Web Apps).
+If Azure reports an unregistered resource provider, register it and re-apply: `az provider register --namespace Microsoft.ManagedIdentity`. A `RequestDisallowedByAzure` error means a resource is in a region the subscription doesn't allow (see Prerequisites).
 
 ## 4. Configure GitHub
 
@@ -60,14 +60,14 @@ In the repository settings:
 1. **Variables** (Settings → Secrets and variables → Actions → Variables): add each entry from `github_variables`. None of them are secrets.
 2. **Environment** (Settings → Environments): create `prod`. It's the only way into the powerful identities, so protect it:
    - **Required reviewers:** add the teammates, so every apply and deploy waits for an explicit approval. **Prevent self-review** stays off (team decision, 2026-10-15): whoever triggered a deploy may approve it.
-   - Uncheck **Allow administrators to bypass configured protection rules**.
+   - **Allow administrators to bypass configured protection rules** stays on (team decision, 2026-10-18). A repository admin can then deploy without an approval, so the approval binds everyone else; turn it off to make it binding for admins too.
    - **Deployment branches and tags:** **Selected branches and tags** → `main` only.
 
    Without these, any workflow that names `environment: prod` gets admin-level credentials.
 
    **Pull requests into `main` are not enforced** (team decision, 2026-10-15). Collaborators can push straight to `main`, so the branch limit only keeps feature branches from deploying. Together with self-approval, one person can push to `main` and approve their own deploy; the approval is a deliberate confirmation step, not a second person's review. Before approving, look at what changed on `main` since the last deploy, especially `.github/workflows/` and `infra/`, because the workflow that runs is the one on `main` at that moment.
 
-   To tighten this later, either check **Prevent self-review** (a second person approves every deploy) or add a branch ruleset on `main` requiring a pull request with one approval and an empty bypass list. Neither needs other changes.
+   To tighten this later, turn off the admin bypass, check **Prevent self-review** (a second person approves every deploy) or add a branch ruleset on `main` requiring a pull request with one approval and an empty bypass list. Neither needs other changes.
 
 ## 5. Create the Google OAuth client (console only)
 
@@ -80,7 +80,7 @@ Terraform can't create OAuth clients for external users, so do this in the conso
 
    Testing mode allows up to 100 test users, and the YouTube grant expires after 7 days. That's fine for the course and avoids Google's verification review for a sensitive scope.
 2. **Credentials → Create OAuth client ID → Web application**:
-   - Authorized JavaScript origins: the `frontend_url` output from step 6, plus `http://localhost:5173`.
+   - Authorized JavaScript origins: the `frontend_url` output from step 6 (the Cloud Run URL, `https://li-frontend-….run.app`), plus `http://localhost:5173`.
    - The client ID becomes `GOOGLE_CLIENT_ID` for the services and frontend. It isn't a secret.
 
 ## 6. Apply `envs/prod`
@@ -104,13 +104,14 @@ What it creates:
 | Database users | `li_admin`, whose password is generated during the run and written to Cloud SQL and Secret Manager `db-admin-password` only (readable by the migrate workload); it is never stored in Terraform state. IAM users for `li-ingest` and `li-search` |
 | Service accounts | `li-ingest`, `li-search`, `li-migrate`, each bound through Workload Identity to the Kubernetes service account of the same name in namespace `li` |
 | Global IP `li-api` | The API is served at `<ip-with-dashes>.sslip.io` (output `api_hostname`), which is enough for a Google-managed certificate without buying a domain |
-| Azure `rg-li-prod` | Free-tier Static Web App `swa-li-prod` (output `frontend_url`) |
+| Cloud Run `li-frontend` | The React app served by nginx (output `frontend_url`); public, scales 0–2 instances, runs as service account `li-frontend` with no roles. Starts with Google's placeholder image until the frontend deploy runs; `github-deploy` may deploy this service only |
+| Azure `rg-li-prod` | In `northcentralus`; holds the backup storage from step 5 of the plan |
 
 Check the configuration without credentials: `terraform -chdir=infra/terraform/envs/prod test` runs it against mocked providers.
 
 To rotate the `li_admin` password, increment the default of `db_admin_password_version` in `variables.tf`, commit, and let the Terraform workflow apply it. Don't set it in `terraform.tfvars`: CI doesn't read that file, so its next apply would see a different version and rotate the password again. Cloud SQL and Secret Manager get the new value together; re-run the services deploy afterwards so the migrate Job runs.
 
-**What Terraform state still holds.** State never contains the database password, but it does contain the Static Web App deploy token (the azurerm provider stores it). Anyone who can read state, including the PR plan identity, could deploy the frontend. Reset the token in the Azure portal if that's ever a concern.
+**Terraform state holds no secrets.** The database password is write-only, and no deploy tokens exist: CI deploys with short-lived Workload Identity credentials.
 
 ## 7. Control cost
 
@@ -123,7 +124,7 @@ Rough monthly costs while everything runs. Check the [GCP pricing calculator](ht
 | Cloud SQL `db-f1-micro` + 10 GB SSD | ~$11 |
 | HTTPS load balancer forwarding rule (created in step 4) | ~$18 |
 | Cloud NAT, Artifact Registry, logging | a few dollars |
-| Static Web Apps (Free) | $0 |
+| Cloud Run `li-frontend` (scales to zero; free tier) | about $0 |
 
 ### Between test sessions: pause
 
@@ -161,7 +162,7 @@ terraform -chdir=infra/terraform/envs/prod destroy   # bootstrap and its state s
 This brings the GCP cost to $0, but:
 
 - **It deletes the database.** Make sure the nightly backup (step 5 of the plan) has run, or the data is disposable.
-- **It releases the IP, which changes the API hostname.** After re-creating, update `values.env` and the CSP `connect-src`, and push to `main` (both deploys re-run because `values.env` changed). The OAuth client's origins only change if the Static Web App was re-created too.
+- **It releases the IP, which changes the API hostname.** After re-creating, update `values.env` and push to `main`; both deploys re-run because `values.env` changed, and the frontend build picks up the new API origin. The Cloud Run URL can change too when the service is re-created: update `CORS_ORIGINS` and the OAuth client's origins.
 
 ### Budget alert
 
@@ -175,7 +176,7 @@ Three workflows deploy from `main`. Each runs in the `prod` environment, so each
 |---|---|---|---|
 | `terraform.yml` | `infra/terraform/` | plan, then apply `envs/prod` as `github-terraform` / `id-li-github`. On PRs: a read-only plan as a PR comment | skips: refreshing the database users needs a running instance |
 | `services-deploy.yml` | `services/`, `db/`, `deploy/k8s/` | build and push both images (tagged with the commit SHA), run the migrate Job, apply the app overlay, wait for the rollouts | skips: migrations need the database, and applying the overlay would re-create the load balancer |
-| `frontend-deploy.yml` | `frontend/`, `values.env` | build with `VITE_API_BASE` and `VITE_GOOGLE_CLIENT_ID` taken from `values.env`, upload to the Static Web App | runs: costs nothing; the site shows API errors until resumed |
+| `frontend-deploy.yml` | `frontend/`, `values.env` | build the nginx image with `VITE_API_BASE` and `VITE_GOOGLE_CLIENT_ID` taken from `values.env` (the CSP's `connect-src` follows `VITE_API_BASE`), push it, `gcloud run deploy li-frontend` | runs: Cloud Run scales to zero anyway; the site shows API errors until resumed |
 
 The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused when Cloud SQL isn't `ALWAYS`/`RUNNABLE`, or (services only) when the namespace exists but the Ingress doesn't. A skipped run ends green with a warning and a summary saying what to re-run. Before the first apply and the first deploy, nothing counts as paused.
 
@@ -184,9 +185,8 @@ The approval comes before the plan is visible. Read the PR's plan comment, or wh
 ### First deploy
 
 1. Steps 1–6 done: bootstrap applied, GitHub variables and the `prod` environment set, `envs/prod` applied (by hand, or by running `terraform.yml`).
-2. Fill `deploy/k8s/overlays/prod/values/values.env` from `terraform output` (each line names its output), plus `GOOGLE_CLIENT_ID` and `PROFESSOR_EMAILS`. The services and frontend deploys refuse to run while it still has placeholders.
-3. Narrow `connect-src` in `frontend/staticwebapp.config.json` from `https://*.sslip.io` to `https://<api_hostname>`.
-4. Push to `main` and approve the services and frontend deploys. The Google-managed certificate takes 15–60 minutes to become active after the first rollout.
-5. Add the `frontend_url` output as an authorized JavaScript origin on the OAuth client (step 5), if it isn't there yet.
+2. Fill `deploy/k8s/overlays/prod/values/values.env` from `terraform output` (each line names its output; `CORS_ORIGINS` is `frontend_url`), plus `GOOGLE_CLIENT_ID` and `PROFESSOR_EMAILS`. The services and frontend deploys refuse to run while it still has placeholders.
+3. Push to `main` and approve the services and frontend deploys. The Google-managed certificate takes 15–60 minutes to become active after the first rollout. Until the frontend deploy runs, the Cloud Run URL shows Google's placeholder page.
+4. Add the `frontend_url` output as an authorized JavaScript origin on the OAuth client (step 5), if it isn't there yet.
 
 A push that touches both `infra/terraform/` and the services starts both workflows at once; nothing orders them. If the services deploy needs the infrastructure change, approve the Terraform run first and re-run the services deploy after it finishes.

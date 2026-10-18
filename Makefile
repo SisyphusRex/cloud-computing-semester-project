@@ -6,7 +6,7 @@ KUBECONFORM ?= kubeconform
 TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
 .PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
-	frontend-install frontend-dev frontend-test k8s-check cloud-status cloud-pause cloud-resume
+	frontend-install frontend-dev frontend-test frontend-image k8s-check cloud-status cloud-pause cloud-resume
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -53,6 +53,9 @@ frontend-dev: ## Frontend dev server on :5173 (proxies the APIs on :8081/:8082)
 
 frontend-test: ## Frontend lint, tests, build
 	cd frontend && npm run lint && npm test && npm run build
+
+frontend-image: ## Build the nginx frontend image and check what it serves (DOCKER="sudo docker" if needed)
+	scripts/test-frontend-image.sh
 
 # GKE CRDs (ManagedCertificate, BackendConfig, FrontendConfig) have no bundled
 # schema, so kubeconform skips them; everything else is checked strictly.

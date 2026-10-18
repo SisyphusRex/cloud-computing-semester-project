@@ -3,6 +3,7 @@ locals {
     "compute.googleapis.com",
     "container.googleapis.com",
     "sqladmin.googleapis.com",
+    "run.googleapis.com",
     "servicenetworking.googleapis.com",
     "artifactregistry.googleapis.com",
     "secretmanager.googleapis.com",
@@ -42,6 +43,16 @@ module "artifact_registry" {
   region  = var.gcp_region
   readers = { gke-nodes = "serviceAccount:${module.gke.node_service_account}" }
   writers = { ci-deploy = "serviceAccount:${var.ci_deploy_service_account}" }
+}
+
+# The SPA on Cloud Run (docs/adr/0001-frontend-on-cloud-run.md). CI deploys
+# revisions; Terraform owns the service, its access and its service account.
+module "frontend" {
+  source     = "../../modules/cloud-run-frontend"
+  name       = "${var.name}-frontend"
+  region     = var.gcp_region
+  deployers  = { ci-deploy = "serviceAccount:${var.ci_deploy_service_account}" }
+  depends_on = [google_project_service.this]
 }
 
 # Ephemeral: generated during the run and passed only to write-only arguments,

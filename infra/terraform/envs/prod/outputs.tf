@@ -17,11 +17,12 @@ output "api_hostname" {
 }
 
 output "frontend_url" {
-  value = "https://${module.static_web_app.default_hostname}"
+  description = "The Cloud Run URL: CORS_ORIGINS in values.env, and an OAuth JavaScript origin."
+  value       = module.frontend.uri
 }
 
-output "static_web_app" {
-  value = { name = module.static_web_app.name, resource_group = azurerm_resource_group.this.name }
+output "frontend_service" {
+  value = { name = module.frontend.name, region = var.gcp_region }
 }
 
 output "cloudsql" {

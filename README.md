@@ -8,7 +8,7 @@ CS 6030 Cloud Computing semester project, Western Michigan University, Fall 2026
 
 | Layer | Service | Cloud |
 |---|---|---|
-| Front end | React SPA on Static Web Apps | Azure |
+| Front end | React SPA (nginx container) on Cloud Run | Google Cloud |
 | Identity | Google Sign-In (OAuth 2.0 / OIDC) | Google Cloud |
 | Application | Ingest API + Search API (Flask, Docker) on GKE with HPA | Google Cloud |
 | Database | Cloud SQL for PostgreSQL, full-text search | Google Cloud |
@@ -16,7 +16,7 @@ CS 6030 Cloud Computing semester project, Western Michigan University, Fall 2026
 | Secrets / registry / monitoring | Secret Manager, Artifact Registry, Cloud Monitoring | Google Cloud |
 | CI/CD / IaC | GitHub Actions (keyless OIDC), Terraform | both |
 
-Full rationale: [docs/proposal/](docs/proposal/).
+Full rationale: [docs/proposal/](docs/proposal/). The proposal put the front end on Azure Static Web Apps; our Azure subscription can't deploy it, so it moved to Cloud Run ([ADR 0001](docs/adr/0001-frontend-on-cloud-run.md)).
 
 ## Run locally
 
@@ -50,7 +50,7 @@ API reference and configuration: [services/README.md](services/README.md). Run `
 
 | Path | Contents |
 |---|---|
-| `frontend/` | React + Vite + TypeScript app, deployed to Azure Static Web Apps |
+| `frontend/` | React + Vite + TypeScript app, served by nginx on Cloud Run |
 | `services/` | uv workspace: `common/` (shared `li_common` package), `ingest/`, `search/` |
 | `backup/` | `pg_dump` → encrypt → Azure Blob CronJob image |
 | `db/migrations/` | Database schema migrations |

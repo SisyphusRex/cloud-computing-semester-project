@@ -10,7 +10,7 @@ Last updated: 2026-10-18.
 |---|---|---|
 | 1 | Move proposal into `docs/proposal/`, README, scaffold the tree | ✅ done (`c40b2b7`) |
 | 2 | `db/migrations`, `services/` (li_common, ingest, search), Dockerfiles, docker-compose, Makefile | ✅ done (`73ed7d8`): 67 tests pass against Postgres 16 |
-| 3 | Terraform: `infra/terraform/bootstrap`, then `envs/prod` | ✅ written and validated (mocked `terraform test` passes); **not applied yet**, see [runbook](runbooks/bootstrap.md) |
+| 3 | Terraform: `infra/terraform/bootstrap`, then `envs/prod` | 🟡 written and validated (mocked `terraform test` passes). Bootstrap applied 2026-10-18 (Azure in `northcentralus` after the region policy refused `eastus2`); GitHub variables and the `prod` environment set. `envs/prod` not applied yet. See [runbook](runbooks/bootstrap.md) |
 | 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | 🟡 everything written: `ci.yml`, manifests (validated), frontend (tested), deploy workflows (linted, not run yet). Real Google/YouTube test passed 2026-10-18. Next: apply the infrastructure and do the first deploy |
 | 5 | Backup CronJob + Azure storage, monitoring module, security review doc | todo |
 
@@ -24,7 +24,7 @@ Last updated: 2026-10-18.
 
 Per the proposal:
 
-- **Frontend**: React + Vite + TypeScript SPA on Azure Static Web Apps; Google Sign-In (OAuth 2.0 / OIDC).
+- **Frontend**: React + Vite + TypeScript SPA served by nginx on **Cloud Run** (the proposal said Azure Static Web Apps; see [ADR 0001](adr/0001-frontend-on-cloud-run.md)); Google Sign-In (OAuth 2.0 / OIDC).
 - **App tier**: two Flask services on GKE behind Cloud Load Balancing, **Ingest API** and **Search API**, each with its own HPA.
 - **Data**: Cloud SQL for PostgreSQL (private IP), full-text search over timestamped caption segments.
 - **Backups**: nightly K8s CronJob → encrypted `pg_dump` → Azure Blob Storage (immutable, cool tier), write-only credential in Secret Manager.
@@ -49,10 +49,10 @@ Per the proposal:
 | **One deployed environment, named `prod`** (`envs/prod`, `overlays/prod`, GitHub environment `prod`, `rg-li-prod`) | It's the only environment and the one demoed, so it is production. The `modules/` + `envs/<name>/` layout is kept, so a throwaway second environment would just be another folder. |
 | **One Terraform state bucket** in GCS for both clouds; `bootstrap/` and `envs/prod` are separate roots | Bootstrap (CI identities) is applied once by a human; `envs/prod` can be destroyed and recreated freely. The bucket itself is created with `gcloud` because Terraform needs it first. |
 | **Keyless CI**: GCP Workload Identity pool restricted to this repo; Azure user-assigned managed identities with federated credentials | No service account keys or client secrets anywhere. |
-| **Powerful CI identities only in the `prod` GitHub environment** (`github-terraform`, `github-deploy`, `id-li-github`); **read-only identities for PRs** (`github-plan`, `id-li-github-plan`) | Bindings match the token's exact subject (`repo:…:environment:prod` vs `repo:…:pull_request`), so a workflow on a PR can't get write access. The `prod` environment requires an approval (no admin bypass; self-approval allowed) and only allows `main`. |
+| **Powerful CI identities only in the `prod` GitHub environment** (`github-terraform`, `github-deploy`, `id-li-github`); **read-only identities for PRs** (`github-plan`, `id-li-github-plan`) | Bindings match the token's exact subject (`repo:…:environment:prod` vs `repo:…:pull_request`), so a workflow on a PR can't get write access. The `prod` environment requires an approval (self-approval allowed; repository admins may bypass it, a team decision of 2026-10-18) and only allows `main`. |
 | **Pull requests into `main` are not enforced, and deploy self-approval is allowed** (for now) | Team choice. One person can push to `main` and approve their own deploy, so the `prod` approval is a deliberate confirmation step: check what changed on `main` (especially `.github/workflows/` and `infra/`) before approving. Tighten later with **Prevent self-review** or a PR ruleset on `main`; neither needs other changes. Deploys wait for CI to pass on the same commit before asking for approval. |
-| **PR plans run `terraform plan -refresh=false -lock=false`** | Reading the Static Web App needs `listSecrets`, which Azure's Reader role lacks. PR plans show what the code change does; the full refresh happens in the plan before each apply. |
-| **No secrets in Terraform state**: the `li_admin` password is an ephemeral `random_password` passed to write-only arguments (`password_wo`, `secret_data_wo`); rotate with `db_admin_password_version` | The PR plan identity can read state. Refreshes of write-only secrets also skip reading the value (checked in the provider source). Exception: azurerm stores the Static Web App deploy token in state. |
+| **PR plans run `terraform plan -refresh=false -lock=false`** | The plan identities are read-only (GCP Viewer, Azure Reader). PR plans show what the code change does; the full refresh happens in the plan before each apply. Originally required because Reader couldn't refresh the Static Web App; kept after the move to Cloud Run. |
+| **No secrets in Terraform state**: the `li_admin` password is an ephemeral `random_password` passed to write-only arguments (`password_wo`, `secret_data_wo`); rotate with `db_admin_password_version` | The PR plan identity can read state. Refreshes of write-only secrets also skip reading the value (checked in the provider source). No deploy tokens exist either: CI uses short-lived Workload Identity credentials. |
 | **API hostname `<ip-with-dashes>.sslip.io`** on a reserved global IP | A Google-managed certificate needs a hostname; this avoids buying a domain. |
 | **Private nodes and private-IP Cloud SQL**, Cloud NAT for outbound traffic | Nothing but the load balancer is reachable from the internet. NAT is needed for the backup upload to Azure Blob. |
 | Terraform modules pass IAM members as **maps with static keys** | `for_each` keys must be known at plan time; member emails aren't until the service accounts exist. Caught by the mocked `terraform test`. |
@@ -69,6 +69,8 @@ Per the proposal:
 | **Pause between test sessions instead of destroying**: `make cloud-pause` scales the pods to 0, deletes the Ingress (load balancer), and stops Cloud SQL; Terraform ignores `activation_policy` | Idle cost drops to ~$9/month (SQL storage, reserved IP), and the reserved IP, and with it the API hostname, survives. Destroying changes the hostname, which means editing `values.env`, the CSP and the OAuth origins. Ignoring the on/off state stops a CI apply from restarting a paused database. |
 | **Workflows run on `ubuntu-24.04`**, not `ubuntu-latest` | `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; pinning keeps the runner image from changing under CI while the deploy workflows are written. Use the same label in new workflows, and upgrade all of them together on purpose. |
 | **Deploy on push to `main`, with a pause check**: path filters pick which of the three deploy workflows run; each waits for CI, then for `prod` approval | Merges deploy without extra steps. While paused (`make cloud-pause`), `terraform.yml` and `services-deploy.yml` skip with a warning instead of failing on the stopped database or re-creating the load balancer (`scripts/ci/check-paused.sh`); re-run them after `make cloud-resume`. The frontend deploy has no check: it's free and harmless while paused. `github-deploy` gets Cloud SQL Viewer for the check. |
+| **Frontend on Cloud Run, not Azure Static Web Apps** ([ADR 0001](adr/0001-frontend-on-cloud-run.md)): nginx image (`frontend/Dockerfile`), service `li-frontend` (public, 0–2 instances), deployed with `gcloud run deploy` | The Azure for Students region policy allows none of the regions Static Web Apps is offered in. Cloud Run is a listed frontend host, scales to zero (~$0), and reuses Docker, Artifact Registry and the `github-deploy` identity, which gets `run.developer` on that one service only. nginx sets the CSP; its `connect-src` follows `VITE_API_BASE` at build time. Terraform ignores the deployed image. |
+| **Azure resources in `northcentralus`** | The subscription may only deploy to `canadacentral`, `mexicocentral`, `northcentralus`, `francecentral` and `swedencentral`; North Central US is closest to `us-central1`. |
 | **The frontend build reads `API_HOSTNAME` and `GOOGLE_CLIENT_ID` from `values.env`** | One file to fill in after `terraform apply`, for the services and the frontend; no extra GitHub variables. |
 | **Image tags are the commit SHA**, set with `kustomize edit set image` in the deploy job and never committed | Each rollout names exactly what's running. `make cloud-resume` therefore re-applies only the Ingress, not the overlay with its placeholder tags. |
 | `li_common.logs`, not `li_common.logging` | A module named `logging` shadows the standard library when Python runs from inside the package folder. |
@@ -79,7 +81,6 @@ Per the proposal:
 - **Not yet verified:** calls to the real YouTube API and real Google ID tokens (tests mock both); the next step below covers them. `docker build` and the compose stack are verified by the `compose` job in `ci.yml` on the first push.
 - **Infrastructure not applied.** Someone with Owner on both clouds follows [runbooks/bootstrap.md](runbooks/bootstrap.md): state bucket, `bootstrap/`, GitHub variables and the `prod` environment, the OAuth client (console only), then `envs/prod`. It needs `gcloud` and `az`. Provisioning starts billing (roughly $40–60/month while running; see the runbook's cost table), so apply close to when step 4 is ready to deploy. Between test sessions, `make cloud-pause` / `make cloud-resume` cut idle cost to ~$9/month without changing the API hostname; destroy when idle for longer (runbook §7).
 - **Deploy workflows written but never run.** `terraform.yml`, `services-deploy.yml` and `frontend-deploy.yml` pass `actionlint`, but nothing in them has touched a real cloud yet: they need bootstrap applied (GitHub variables, the `prod` environment). Until then a push to `main` that touches their paths starts a run that fails at sign-in. Expect fixes during the first deploy ([runbook §8](runbooks/bootstrap.md#8-deploy-from-github-actions)).
-- **CSP `connect-src`** in `frontend/staticwebapp.config.json` allows `https://*.sslip.io`; narrow it to the real `api_hostname` once known (first-deploy step 3 in the runbook).
 - **Tooling.** Required tools and install steps for Linux and WSL2 are in [local-development.md](local-development.md); `make doctor` checks them.
 
 ## Done: step 3, Terraform
@@ -94,7 +95,7 @@ infra/terraform/
 │   ├── cloudsql/             # Postgres 16 db-f1-micro, private IP, IAM auth, li_admin + IAM users
 │   ├── artifact-registry/    # Docker repo with cleanup policies
 │   ├── secrets/              # Secret Manager secrets with per-secret accessors
-│   ├── azure-static-web-app/ # Free tier
+│   ├── cloud-run-frontend/   # nginx SPA on Cloud Run, public, deployers scoped to the service
 │   ├── monitoring/           # step 5
 │   └── azure-backup-storage/ # step 5
 └── envs/prod/                # wires the modules; identities.tf (Workload Identity); tests/ (mocked)
@@ -113,6 +114,7 @@ Checks: `terraform fmt -check -recursive`, `terraform validate` in both roots, `
 | `terraform` | `fmt -check`, `validate` in both roots, mocked `terraform test` |
 | `k8s` | `make k8s-check`: `kustomize build` + `kubeconform -strict` on both overlays |
 | `frontend` | `npm ci`, lint, vitest, production build |
+| `frontend-image` | `scripts/test-frontend-image.sh`: builds the nginx image, then checks the app, SPA fallback, 404s, `/healthz`, and the CSP and cache headers |
 
 **Kubernetes (`deploy/k8s`)**
 
@@ -250,7 +252,7 @@ To finish, run `docker compose -f docker-compose.yml -f docker-compose.google.ym
 The deploy workflows are written ([runbook §8](runbooks/bootstrap.md#8-deploy-from-github-actions) has triggers and the first-deploy steps). What remains: apply bootstrap and `envs/prod` ([runbook](runbooks/bootstrap.md)), fill `values.env`, push to `main`, and fix what the first real run turns up. As designed:
 - `terraform.yml`: on PRs, `plan -refresh=false -lock=false` as `github-plan` / `id-li-github-plan` (`AZURE_PLAN_CLIENT_ID`, `ARM_RESOURCE_PROVIDER_REGISTRATIONS=none`), posted as a PR comment; on push to `main`, a full plan then apply in the `prod` environment as `github-terraform` / `id-li-github`.
 - `services-deploy.yml`: in the `prod` environment, as `github-deploy`: build both images, push to Artifact Registry, create the namespace, run the migrate overlay and wait for the Job, then apply the app overlay with the new image tags and wait for the rollouts.
-- `frontend-deploy.yml`: in the `prod` environment, build with `VITE_API_BASE=https://<api_hostname>` and `VITE_GOOGLE_CLIENT_ID`, fetch the Static Web Apps deploy token with `id-li-github`, deploy. Also add the SWA URL as an authorized origin on the OAuth client.
+- `frontend-deploy.yml`: in the `prod` environment, as `github-deploy`: build the nginx image with `VITE_API_BASE=https://<api_hostname>` and `VITE_GOOGLE_CLIENT_ID`, push it, `gcloud run deploy li-frontend`. Also add the Cloud Run URL as an authorized origin on the OAuth client.
 
 **Monitoring inputs (for step 5).** The services already log these events as JSON, ready for log-based metrics:
 
@@ -272,4 +274,4 @@ The deploy workflows are written ([runbook §8](runbooks/bootstrap.md#8-deploy-f
 - `make lint`, `make test-db`, `make dev-up`, `make smoke`; `make frontend-test`; `make k8s-check`.
 - `terraform -chdir=infra/terraform/envs/prod test` (no credentials), then `plan` against the real project; `make k8s-check`.
 - CI green on a PR touching each top-level directory.
-- End to end: sign in on the Static Web Apps URL, register a captioned video, search a spoken term, and the link opens at the right second.
+- End to end: sign in on the Cloud Run URL, register a captioned video, search a spoken term, and the link opens at the right second.

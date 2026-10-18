@@ -30,7 +30,7 @@ Locally, `LI_DEV_AUTH=1` accepts `Authorization: Bearer dev:<email>` instead of 
 | `DATABASE_URL` | In GKE this points at the Cloud SQL Auth Proxy sidecar (`127.0.0.1`) with IAM login |
 | `GOOGLE_CLIENT_ID` | OAuth web client ID; the ID token's audience must match |
 | `PROFESSOR_EMAILS` | Comma-separated; signing in with one grants the professor role |
-| `CORS_ORIGINS` | Comma-separated frontend origins (the Static Web Apps URL) |
+| `CORS_ORIGINS` | Comma-separated frontend origins (the Cloud Run frontend URL) |
 | `LI_DEV_AUTH` | `1` enables dev tokens; local only |
 | `DB_POOL_SIZE` | Connections per gunicorn worker (default 4, matching `--threads 4`) |
 | `LI_MIGRATE_GRANTS` | `li-migrate` only: `role=user,...` pairs granting the `li_ingest_role` / `li_search_role` group roles to the services' database users (Terraform output `migrate_grants`) |

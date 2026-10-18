@@ -1,9 +1,9 @@
 name: Deploy frontend
 
-# Builds the SPA and uploads it to the Static Web App. Runs on pushes to main
-# that touch the frontend or the production values, and by hand
-# (gh workflow run frontend-deploy.yml --ref main). No pause check: Static Web
-# Apps Free costs nothing, and a paused API only means the site shows errors.
+# Builds the SPA into an nginx image and deploys it to Cloud Run. Runs on
+# pushes to main that touch the frontend or the production values, and by hand
+# (gh workflow run frontend-deploy.yml --ref main). No pause check: Cloud Run
+# scales to zero by itself, and a paused API only means the site shows errors.
 on:
   push:
     branches: [main]
@@ -17,9 +17,8 @@ permissions:
   contents: read
 
 env:
-  # Names fixed by infra/terraform/envs/prod/azure.tf.
-  SWA_NAME: swa-li-prod
-  SWA_RESOURCE_GROUP: rg-li-prod
+  # Name fixed by infra/terraform/envs/prod (module "frontend").
+  SERVICE: li-frontend
   VALUES: deploy/k8s/overlays/prod/values/values.env
 
 jobs:
@@ -29,7 +28,7 @@ jobs:
       actions: read
 
   deploy:
-    name: Build and upload
+    name: Build and deploy
     needs: ci
     runs-on: ubuntu-24.04
     environment: prod
@@ -40,6 +39,9 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      REGION: ${{ vars.GCP_REGION }}
+      IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/li/frontend:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7
 
@@ -55,49 +57,28 @@ jobs:
             exit 1
           fi
           {
-            echo "VITE_API_BASE=https://$host"
-            echo "VITE_GOOGLE_CLIENT_ID=$client"
-            echo "VITE_DEV_AUTH=0"
+            echo "API_BASE=https://$host"
+            echo "GOOGLE_CLIENT_ID=$client"
           } >> "$GITHUB_ENV"
 
-      - uses: actions/setup-node@v7
+      - uses: google-github-actions/auth@v3
         with:
-          node-version-file: frontend/.nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
 
-      - name: Build
-        working-directory: frontend
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Build and push the image
         run: |
-          npm ci
-          npm run build
-          # Static Web Apps reads its routes and headers from the uploaded folder.
-          cp staticwebapp.config.json dist/
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker build -t "$IMAGE" \
+            --build-arg "VITE_API_BASE=$API_BASE" \
+            --build-arg "VITE_GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" \
+            frontend
+          docker push "$IMAGE"
 
-      - uses: azure/login@v3
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Get the deploy token
-        id: token
+      - name: Deploy to Cloud Run
         run: |
-          token=$(az staticwebapp secrets list --name "$SWA_NAME" --resource-group "$SWA_RESOURCE_GROUP" \
-            --query properties.apiKey -o tsv)
-          echo "::add-mask::$token"
-          echo "token=$token" >> "$GITHUB_OUTPUT"
-
-      - uses: Azure/static-web-apps-deploy@v1
-        with:
-          action: upload
-          azure_static_web_apps_api_token: ${{ steps.token.outputs.token }}
-          app_location: frontend/dist
-          skip_app_build: true
-          skip_api_build: true
-
-      - name: Summary
-        run: |
-          url=$(az staticwebapp show --name "$SWA_NAME" --resource-group "$SWA_RESOURCE_GROUP" \
-            --query defaultHostname -o tsv)
-          echo "### Deployed \`${GITHUB_SHA:0:7}\` to https://$url (API: $VITE_API_BASE)" >> "$GITHUB_STEP_SUMMARY"
+          gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --quiet
+          url=$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')
+          echo "### Deployed \`${GITHUB_SHA:0:7}\` to $url (API: $API_BASE)" >> "$GITHUB_STEP_SUMMARY"

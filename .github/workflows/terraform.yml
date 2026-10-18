@@ -66,7 +66,7 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_PLAN_SA }}
       - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-      # -refresh=false: Reader can't read the Static Web App's secrets.
+      # -refresh=false: shows what the change does; the apply job refreshes fully.
       # -lock=false: the plan identity can't write the lock object.
       - name: Plan
         run: |

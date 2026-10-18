@@ -161,6 +161,7 @@ make install         # needs uv: creates services/.venv
 make lint            # ruff
 make test-db         # all Python tests, against the compose Postgres
 make frontend-test   # ESLint, vitest, production build
+make frontend-image  # the production nginx image (Docker; DOCKER="sudo docker" if needed)
 ```
 
 Optional, if you have the tools: `make k8s-check` (needs `kustomize` and `kubeconform` on `PATH`), and `terraform -chdir=infra/terraform/envs/prod test` (Terraform 1.16.4; [tfenv](https://github.com/tfutils/tfenv) picks it from `infra/terraform/.terraform-version`).

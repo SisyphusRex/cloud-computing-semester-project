@@ -44,8 +44,8 @@ resource "azurerm_federated_identity_credential" "plan" {
   subject                   = "repo:${var.github_repository}:pull_request"
 }
 
-# Reader can't list the Static Web App's secrets, which a refresh would do;
-# PR plans therefore run with -refresh=false.
+# Read-only: PR plans run with -refresh=false, so this mostly serves anyone
+# running a full plan by hand.
 resource "azurerm_role_assignment" "plan_reader" {
   scope                = data.azurerm_subscription.current.id
   role_definition_name = "Reader"
