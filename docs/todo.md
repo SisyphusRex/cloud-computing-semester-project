@@ -46,6 +46,19 @@ Open work that isn't scheduled in the [implementation plan](milestones/m2_protot
 
 Have someone who hasn't worked on the project follow it, and fix what trips them up.
 
+## Tell users when the environment is paused
+
+**Today:** while the environment is paused (`make cloud-pause`), the Cloud Run frontend still loads and Google sign-in still works, because neither depends on our infrastructure. Every API call then fails, and the app shows the generic "Could not reach the server." ([`client.ts`](../frontend/src/api/client.ts), `network_error`). To a teammate or grader that looks like a bug.
+
+Two improvements, independent of each other:
+
+1. **A clearer message for an unreachable API (small).** When the API can't be reached at all (`network_error`), show something like *"The service is paused to save cost. Ask the team to resume it."* instead of the generic error, at least on the first request after sign-in. Keep the generic wording for other failures. Add a vitest case.
+2. **A maintenance banner while paused (more moving parts).** Show a banner on every page while the environment is paused, before anyone signs in.
+   - `make cloud-pause` sets a flag the frontend can read, and `make cloud-resume` clears it as its last step, next to the namespace annotation.
+   - The flag could be a Cloud Run environment variable read at container start (`gcloud run services update li-frontend --update-env-vars LI_PAUSED=1`, served by nginx as a small `/status.json`), or a static file in a public bucket.
+   - Keep other tools from clearing the flag: releases and `rollback.yml` already skip while paused, but Terraform would remove an environment variable set by `gcloud`. Add `template[0].containers[0].env` to `ignore_changes` in [`modules/cloud-run-frontend`](../infra/terraform/modules/cloud-run-frontend/main.tf), or use the bucket file instead.
+   - Update `cloud-power.sh`'s step list and the runbook.
+
 ## Report on the Milestone 2 deliverables
 
 Prepare the Prototype Review report (week 10, 10% of the grade) in [`docs/milestones/m2_prototype_review/`](milestones/m2_prototype_review/). Show how we implemented each deliverable from the [course requirements](milestones/m1_project_proposal/project-requirements.md):
