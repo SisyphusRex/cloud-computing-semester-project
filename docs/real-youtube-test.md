@@ -43,8 +43,8 @@ sudo docker compose -f docker-compose.yml -f docker-compose.google.yml up --buil
 curl -s localhost:8081/readyz; echo; curl -s localhost:8082/readyz
 ```
 
-- [ ] `db`, `ingest`, `search` running; `migrate` exited
-- [ ] Both `readyz` calls answer OK
+- [x] `db`, `ingest`, `search` running; `migrate` exited
+- [x] Both `readyz` calls answer OK
 
 Terminal 2, the Ingest log (leave running):
 
