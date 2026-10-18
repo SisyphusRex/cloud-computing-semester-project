@@ -51,6 +51,7 @@ None of these are secrets.
 3. **Azure refused everything in `eastus2`** (`RequestDisallowedByAzure`). Our subscription only allows `canadacentral`, `mexicocentral`, `northcentralus`, `francecentral` and `swedencentral`. Moved Azure to `northcentralus` and applied again.
 4. That apply was interrupted after it had created the two Azure identities but before it recorded them in state. Recovered by releasing the state lock, importing both identities, and applying the remaining 4 resources. A fresh plan now shows no changes.
 5. Set the 11 GitHub variables from `terraform output github_variables`.
+6. **The first release run couldn't sign in** (`iam.serviceAccounts.getAccessToken` denied). The repository uses GitHub's immutable token subjects (`repo:SisyphusRex@84345902/cloud-computing-semester-project@1403489193:…`), but bootstrap matched the name-only form, so none of the CI bindings (prod, prod-plan, pull requests) could ever match. Fixed with the `github_subject_prefix` variable and re-applied (4 GCP bindings replaced, 3 Azure credentials updated).
 
 ### Frontend moved to Cloud Run
 

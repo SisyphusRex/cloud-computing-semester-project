@@ -39,7 +39,7 @@ locals {
     "roles/viewer",
   ]
 
-  subject_prefix       = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/subject/repo:${var.github_repository}"
+  subject_prefix       = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/subject/${var.github_subject_prefix}"
   environment_subject  = "${local.subject_prefix}:environment:${var.github_environment}"
   pull_request_subject = "${local.subject_prefix}:pull_request"
   plan_env_subject     = "${local.subject_prefix}:environment:${var.github_plan_environment}"

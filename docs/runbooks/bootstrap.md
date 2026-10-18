@@ -53,6 +53,8 @@ terraform output github_variables
 
 If Azure reports an unregistered resource provider, register it and re-apply: `az provider register --namespace Microsoft.ManagedIdentity`. A `RequestDisallowedByAzure` error means a resource is in a region the subscription doesn't allow (see Prerequisites).
 
+**Token subjects.** The bindings match GitHub's OIDC token subject exactly. This repository uses GitHub's *immutable* subjects, which include the owner and repository IDs (`repo:SisyphusRex@84345902/cloud-computing-semester-project@1403489193:environment:prod`), so `github_subject_prefix` in `variables.tf` holds that prefix. For a fork or a renamed repository, set it from `gh api repos/OWNER/REPO/actions/oidc/customization/sub -q .sub_claim_prefix`. A wrong prefix shows up in CI as `Permission 'iam.serviceAccounts.getAccessToken' denied` right after a successful sign-in.
+
 ## 4. Configure GitHub
 
 In the repository settings:

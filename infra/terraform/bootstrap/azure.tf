@@ -21,7 +21,7 @@ resource "azurerm_federated_identity_credential" "github" {
   user_assigned_identity_id = azurerm_user_assigned_identity.github.id
   audience                  = ["api://AzureADTokenExchange"]
   issuer                    = "https://token.actions.githubusercontent.com"
-  subject                   = "repo:${var.github_repository}:environment:${var.github_environment}"
+  subject                   = "${var.github_subject_prefix}:environment:${var.github_environment}"
 }
 
 resource "azurerm_role_assignment" "github_contributor" {
@@ -41,7 +41,7 @@ resource "azurerm_federated_identity_credential" "plan" {
   user_assigned_identity_id = azurerm_user_assigned_identity.plan.id
   audience                  = ["api://AzureADTokenExchange"]
   issuer                    = "https://token.actions.githubusercontent.com"
-  subject                   = "repo:${var.github_repository}:pull_request"
+  subject                   = "${var.github_subject_prefix}:pull_request"
 }
 
 # The release workflow's plan job, before anyone approves the release.
@@ -50,7 +50,7 @@ resource "azurerm_federated_identity_credential" "plan_environment" {
   user_assigned_identity_id = azurerm_user_assigned_identity.plan.id
   audience                  = ["api://AzureADTokenExchange"]
   issuer                    = "https://token.actions.githubusercontent.com"
-  subject                   = "repo:${var.github_repository}:environment:${var.github_plan_environment}"
+  subject                   = "${var.github_subject_prefix}:environment:${var.github_plan_environment}"
 }
 
 # Read-only: enough for release.yml's full-refresh plan. PR plans skip the
