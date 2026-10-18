@@ -50,7 +50,8 @@ jobs:
           fetch-depth: 0 # history and tags, to diff against the last prod-* tag
       # Also printed to the log: GitHub shows job summaries only once the
       # whole run has finished, but the log is readable while it waits for approval.
-      - id: summary
+      - name: Review sheet
+        id: summary
         run: |
           set -o pipefail
           scripts/ci/release-summary.sh | tee -a "$GITHUB_STEP_SUMMARY"

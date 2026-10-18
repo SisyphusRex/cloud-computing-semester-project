@@ -47,7 +47,7 @@ Everything in a release can be done from github.com; `gh` only saves clicks. You
 |---|---|
 | **Start a release again** (after a pause, or to retry) | **Actions → Release → Run workflow**, branch `main`, **Run workflow** |
 | **Roll back** | **Actions → Roll back → Run workflow**, branch `main`, type the tag (for example `prod-2026-10-18.1`), **Run workflow** |
-| **Read the review sheet and plan** | Open the run, click the **Review sheet** job (or **Terraform plan (read-only)**) in the left sidebar, and expand its main step. The same text appears as job summaries on the run page, but GitHub shows those only once the run has finished |
+| **Read the review sheet and plan** | Open the run, click the **Review sheet** job in the left sidebar and expand its **Review sheet** step (for the plan: the **Terraform plan (read-only)** job, **Plan** step). The same text appears as job summaries on the run page, but GitHub shows those only once the run has finished |
 | **Approve or reject** | On the run page, **Review deployments**, tick `prod`, then **Approve and deploy** or **Reject** |
 | **Cancel a run** | On the run page, **Cancel workflow** (top right) |
 | **Find release tags** | **Releases** (right-hand side of the repository page) lists every `prod-*` tag with its commits |
@@ -82,7 +82,7 @@ How a `prod` reviewer who didn't write the change goes through a waiting release
 
 1. **Notice it.** GitHub emails the `prod` reviewers *"Deployment review requested"*, and the Actions tab shows the Release run as **Waiting**. Open the run.
 2. **Who pushed what.** The top of the run page shows the commit, the branch (`main`) and who pushed it. Click the commit and read its message.
-3. **Everything this release ships, not just the last commit.** Open **Releases**, note the latest `prod-*` tag, and open `https://github.com/SisyphusRex/cloud-computing-semester-project/compare/<that tag>...<commit>`. Or read the **Review sheet** job's log, which lists the same commits and files. The branch's **Activity** page (`…/activity?ref=main`) shows each push to `main` with a "compare changes" link.
+3. **Everything this release ships, not just the last commit.** Open **Releases**, note the latest `prod-*` tag, and open `https://github.com/SisyphusRex/cloud-computing-semester-project/compare/<that tag>...<commit>`. Or open the **Review sheet** job and expand its **Review sheet** step, which lists the same commits and files. The branch's **Activity** page (`…/activity?ref=main`) shows each push to `main` with a "compare changes" link.
 4. **Read the risky parts, in this order.** On the compare page's **Files changed** tab, type a path into the filter above the file tree. Mark files as **Viewed** as you go.
 
    | Filter / place | Why | Reject if |
