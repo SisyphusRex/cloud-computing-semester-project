@@ -150,7 +150,7 @@ The script is `scripts/cloud-power.sh` (`DRY_RUN=1` prints the commands without 
 Things to know:
 
 - **Terraform doesn't touch the Cloud SQL on/off state** (`ignore_changes` on `activation_policy`), so a `terraform apply`, including CI's, never restarts a paused database. Terraform still creates the instance running.
-- **Deploys skip while paused** (step 8): they finish green with a warning and change nothing. After `make cloud-resume`, re-run the release: `gh workflow run release.yml --ref main`.
+- **Deploys skip while paused** (step 8): they finish green with a warning and change nothing. After `make cloud-resume`, re-run the release: **Actions → Release → Run workflow** on `main`, or `gh workflow run release.yml --ref main`.
 - **The Deployments have no `replicas` field**, and an HPA leaves a Deployment at 0 replicas alone, so pods stay at 0 until `make cloud-resume` scales them back.
 - **Resume re-applies only the Ingress** (label `app.kubernetes.io/component=ingress`). Re-applying the whole overlay would reset the image tags to the committed placeholders.
 - The ManagedCertificate stays in the cluster while paused. If the API answers with a certificate error right after a resume, wait for the load balancer to finish provisioning (up to ~30 minutes).

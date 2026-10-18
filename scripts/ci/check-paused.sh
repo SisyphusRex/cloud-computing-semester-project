@@ -44,6 +44,6 @@ echo "::warning title=Environment is paused::${joined//;/; }. Skipped; after mak
   echo "### Skipped: the environment is paused"
   printf -- '- %s\n' "${reasons[@]}"
   echo
-  echo "Run \`make cloud-resume\`, then re-run this workflow:"
-  echo "\`gh workflow run $workflow --ref main\`"
+  echo "Run \`make cloud-resume\`, then re-run this workflow: **Actions → $GITHUB_WORKFLOW → Run workflow** on \`main\`,"
+  echo "or \`gh workflow run $workflow --ref main\`."
 } >> "$GITHUB_STEP_SUMMARY"

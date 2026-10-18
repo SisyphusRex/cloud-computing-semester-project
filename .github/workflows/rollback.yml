@@ -3,7 +3,8 @@ name: Roll back
 # Redeploys the services and frontend exactly as released at an earlier
 # prod-* tag: same images, same values.env and manifests. No migrations and no
 # Terraform: the database and infrastructure stay as they are.
-#   gh workflow run rollback.yml --ref main -f tag=prod-2026-10-18.1
+#   GitHub: Actions → Roll back → Run workflow (branch main), enter the tag
+#   gh:     gh workflow run rollback.yml --ref main -f tag=prod-2026-10-18.1
 # Afterwards revert the bad commit on development and merge, or the next
 # release redeploys it. Runbook: docs/release-process.md
 on:

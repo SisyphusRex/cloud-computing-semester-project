@@ -114,7 +114,7 @@ Before merging, `make release-diff` shows what will ship. After the push, one **
   ```
 - **Tag:** `prod-2026-10-18.1` and a GitHub Release appear when it succeeds.
 
-Optionally, test the rollback once: `gh workflow run rollback.yml --ref main -f tag=prod-2026-10-18.1`. It redeploys the same release and should change nothing.
+Optionally, test the rollback once: **Actions → Roll back → Run workflow** with tag `prod-2026-10-18.1` (or `gh workflow run rollback.yml --ref main -f tag=prod-2026-10-18.1`). It redeploys the same release and should change nothing.
 
 ### 6. Verify end to end
 
