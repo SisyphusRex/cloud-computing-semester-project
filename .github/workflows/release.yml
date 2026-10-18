@@ -1,0 +1,292 @@
+name: Release
+
+# One release per push to main (or by hand): review sheet and Terraform plan
+# first, then ONE prod approval runs infra, backup, migrations, services and
+# frontend in order, then the commit is tagged prod-YYYY-MM-DD.N.
+# What to check before approving, and how to roll back: docs/release-process.md
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One release at a time; a newer push waits instead of cancelling a release.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  KUSTOMIZE_VERSION: "v5.8.3"
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "0"
+  # terraform.tfvars is git-ignored; CI passes the same values from repository variables.
+  TF_VAR_gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+  TF_VAR_gcp_region: ${{ vars.GCP_REGION }}
+  TF_VAR_azure_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  TF_VAR_ci_deploy_service_account: ${{ vars.GCP_DEPLOY_SA }}
+  ARM_USE_OIDC: "true"
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  REPO: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/li
+
+jobs:
+  ci:
+    uses: ./.github/workflows/wait-for-ci.yml
+    permissions:
+      actions: read
+
+  review:
+    name: Review sheet
+    runs-on: ubuntu-24.04
+    outputs:
+      has_migrations: ${{ steps.summary.outputs.has_migrations }}
+      first_release: ${{ steps.summary.outputs.first_release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # history and tags, to diff against the last prod-* tag
+      - id: summary
+        run: scripts/ci/release-summary.sh >> "$GITHUB_STEP_SUMMARY"
+
+  plan:
+    name: Terraform plan (read-only)
+    needs: ci
+    runs-on: ubuntu-24.04
+    # No reviewers: only gives the read-only plan identities, from main.
+    environment: prod-plan
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      paused: ${{ steps.paused.outputs.paused }}
+      infra_changes: ${{ steps.plan.outputs.infra_changes }}
+    env:
+      ARM_CLIENT_ID: ${{ vars.AZURE_PLAN_CLIENT_ID }}
+      ARM_RESOURCE_PROVIDER_REGISTRATIONS: none # Reader can't register providers
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/prod
+    steps:
+      - uses: actions/checkout@v7
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_PLAN_SA }}
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          install_components: kubectl,gke-gcloud-auth-plugin
+      # While paused, the release is skipped before anyone is asked to approve.
+      - name: Check whether the environment is paused
+        id: paused
+        working-directory: .
+        run: |
+          gcloud container clusters get-credentials li --region "$GCP_REGION"
+          scripts/ci/check-paused.sh sql+k8s
+      - id: version
+        if: steps.paused.outputs.paused == 'false'
+        run: echo "terraform=$(cat ../../.terraform-version)" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@v4
+        if: steps.paused.outputs.paused == 'false'
+        with:
+          terraform_version: ${{ steps.version.outputs.terraform }}
+          terraform_wrapper: false
+      - if: steps.paused.outputs.paused == 'false'
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+      # Full refresh, so this is the real plan; -lock=false because this
+      # identity can't write the lock. The release job applies this exact file.
+      - name: Plan
+        id: plan
+        if: steps.paused.outputs.paused == 'false'
+        run: |
+          set +e
+          terraform plan -lock=false -detailed-exitcode -no-color -out=tfplan > "$RUNNER_TEMP/plan.txt" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/plan.txt"
+          case $code in
+            0) changes=false ;;
+            2) changes=true ;;
+            *) exit "$code" ;;
+          esac
+          echo "infra_changes=$changes" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Terraform plan: $([[ $changes == true ]] && echo '⚠ changes' || echo 'no changes')"
+            echo '```'
+            tail -c 60000 "$RUNNER_TEMP/plan.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: steps.plan.outputs.infra_changes == 'true'
+        with:
+          name: tfplan
+          path: infra/terraform/envs/prod/tfplan
+          retention-days: 1
+
+  release:
+    name: Release to prod
+    needs: [ci, review, plan]
+    if: needs.plan.outputs.paused == 'false'
+    runs-on: ubuntu-24.04
+    environment: prod # the one approval
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      SHA: ${{ github.sha }}
+      INFRA_CHANGES: ${{ needs.plan.outputs.infra_changes }}
+      HAS_MIGRATIONS: ${{ needs.review.outputs.has_migrations }}
+      FIRST_RELEASE: ${{ needs.review.outputs.first_release }}
+      VALUES: deploy/k8s/overlays/prod/values/values.env
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read production values
+        run: |
+          if grep -nE 'REPLACE_ME|PROJECT_ID|0-0-0-0' "$VALUES"; then
+            echo "::error::Fill in $VALUES from terraform output first"
+            exit 1
+          fi
+          value() { sed -n "s/^$1=//p" "$VALUES"; }
+          {
+            echo "API_HOSTNAME=$(value API_HOSTNAME)"
+            echo "GOOGLE_CLIENT_ID=$(value GOOGLE_CLIENT_ID)"
+          } >> "$GITHUB_ENV"
+
+      # 1-2: as github-terraform (Editor).
+      - uses: google-github-actions/auth@v3
+        if: env.INFRA_CHANGES == 'true' || env.HAS_MIGRATIONS == 'true'
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_SA }}
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          install_components: kubectl,gke-gcloud-auth-plugin
+
+      - uses: actions/download-artifact@v7
+        if: env.INFRA_CHANGES == 'true'
+        with:
+          name: tfplan
+          path: infra/terraform/envs/prod
+      - id: version
+        if: env.INFRA_CHANGES == 'true'
+        run: echo "terraform=$(cat infra/terraform/.terraform-version)" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@v4
+        if: env.INFRA_CHANGES == 'true'
+        with:
+          terraform_version: ${{ steps.version.outputs.terraform }}
+          terraform_wrapper: false
+      - name: 1. Apply the reviewed Terraform plan
+        if: env.INFRA_CHANGES == 'true'
+        working-directory: infra/terraform/envs/prod
+        run: |
+          terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          # Refuses if state changed since the plan was made.
+          terraform apply -no-color tfplan
+
+      - name: 2. Back up the database before migrating
+        if: env.HAS_MIGRATIONS == 'true'
+        run: |
+          gcloud sql backups create --instance li-pg --description "before release ${SHA:0:7}"
+          id=$(gcloud sql backups list --instance li-pg --limit 1 --sort-by=~startTime --format='value(id)')
+          echo "### Database backup before migrating: \`$id\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Restore: \`gcloud sql backups restore $id --restore-instance li-pg\` (overwrites the database)" >> "$GITHUB_STEP_SUMMARY"
+
+      # 3-7: as github-deploy.
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: 3. Build and push all three images
+        run: |
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          for svc in ingest search; do
+            docker build -f "services/$svc/Dockerfile" -t "$REPO/$svc:$SHA" .
+            docker push "$REPO/$svc:$SHA"
+          done
+          docker build -t "$REPO/frontend:$SHA" \
+            --build-arg "VITE_API_BASE=https://$API_HOSTNAME" \
+            --build-arg "VITE_GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" \
+            frontend
+          docker push "$REPO/frontend:$SHA"
+
+      - name: Connect to the cluster
+        run: |
+          gcloud container clusters get-credentials li --region "$GCP_REGION"
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP/bin" kustomize
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: 4. Run migrations
+        run: scripts/ci/run-migrations.sh "$REPO" "$SHA"
+
+      - name: 5. Roll out ingest and search (undone automatically on failure)
+        run: scripts/ci/rollout-services.sh "$REPO" "$SHA"
+
+      - name: 6. Deploy the frontend (traffic moves only after a check)
+        run: scripts/ci/deploy-frontend.sh "$REPO/frontend:$SHA"
+
+      - name: 7. Check the API through the load balancer
+        run: |
+          # 401 = reached the Search API, which wants a sign-in. -k: the
+          # certificate can lag behind on a first release.
+          for _ in $(seq 60); do
+            code=$(curl -sk -o /dev/null -w '%{http_code}' "https://$API_HOSTNAME/search/courses" || true)
+            [[ $code == 401 ]] && { echo "API answers (401)"; exit 0; }
+            sleep 10
+          done
+          if [[ $FIRST_RELEASE == true ]]; then
+            echo "::warning::The API isn't reachable yet (last status: $code). On a first release the load balancer and certificate can take up to an hour; check again later."
+            exit 0
+          fi
+          echo "::error::The API isn't answering through the load balancer (last status: $code); rolling the services back"
+          kubectl -n li rollout undo deploy/ingest || true
+          kubectl -n li rollout undo deploy/search || true
+          exit 1
+
+      - name: Summary
+        run: |
+          {
+            echo "### Released \`${SHA:0:7}\`"
+            echo "- Images: \`$REPO/{ingest,search,frontend}:$SHA\`"
+            echo "- API: https://$API_HOSTNAME"
+            echo "- Frontend: $(gcloud run services describe li-frontend --region "$GCP_REGION" --format='value(status.url)')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  tag:
+    name: Tag the release
+    needs: release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Tag prod-YYYY-MM-DD.N and create a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous=$(git describe --tags --match 'prod-*' --abbrev=0 2>/dev/null || true)
+          day=$(date -u +%F)
+          n=$(( $(git tag -l "prod-$day.*" | wc -l) + 1 ))
+          tag="prod-$day.$n"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Released to prod by run $GITHUB_RUN_ID" "$GITHUB_SHA"
+          git push origin "$tag"
+          {
+            echo "Released to prod: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            echo "Commits since ${previous:-the beginning}:"
+            echo
+            git log --no-decorate --format='- %h %s' ${previous:+"$previous.."}"$GITHUB_SHA" | head -n 100
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "$tag" --title "$tag" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+          echo "### Tagged \`$tag\`" >> "$GITHUB_STEP_SUMMARY"

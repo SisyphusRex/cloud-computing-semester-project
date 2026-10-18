@@ -36,11 +36,13 @@ resource "google_cloud_run_v2_service" "this" {
   }
 
   # CI deploys the real image (and gcloud sets client fields and revision
-  # labels); an apply must not roll a deployed revision back.
+  # labels), and moves traffic only after checking the new revision
+  # (scripts/ci/deploy-frontend.sh); an apply must not undo either.
   lifecycle {
     ignore_changes = [
       client,
       client_version,
+      traffic,
       template[0].containers[0].image,
       template[0].labels,
       template[0].annotations,

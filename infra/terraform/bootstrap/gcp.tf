@@ -5,6 +5,7 @@
 #   repo:<repo>:environment:<env>  -> github-terraform, github-deploy
 #                                     (jobs in the protected GitHub environment)
 #   repo:<repo>:pull_request       -> github-plan (read-only)
+#   repo:<repo>:environment:<plan env> -> github-plan (release.yml's plan job)
 
 locals {
   bootstrap_services = [
@@ -41,6 +42,7 @@ locals {
   subject_prefix       = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/subject/repo:${var.github_repository}"
   environment_subject  = "${local.subject_prefix}:environment:${var.github_environment}"
   pull_request_subject = "${local.subject_prefix}:pull_request"
+  plan_env_subject     = "${local.subject_prefix}:environment:${var.github_plan_environment}"
 }
 
 resource "google_project_service" "bootstrap" {
@@ -140,4 +142,11 @@ resource "google_service_account_iam_member" "plan_wif" {
   service_account_id = google_service_account.plan.name
   role               = "roles/iam.workloadIdentityUser"
   member             = local.pull_request_subject
+}
+
+# The release workflow plans with this identity before asking for approval.
+resource "google_service_account_iam_member" "plan_env_wif" {
+  service_account_id = google_service_account.plan.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = local.plan_env_subject
 }

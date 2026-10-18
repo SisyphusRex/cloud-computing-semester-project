@@ -89,7 +89,7 @@ resume() {
     fi
     for d in "${DEPLOYMENTS[@]}"; do kube rollout status "$d" --timeout=5m; done
     echo "Resumed. The load balancer takes a few minutes to serve traffic again."
-    echo "Deploys that skipped while paused: gh workflow run services-deploy.yml --ref main (or terraform.yml)"
+    echo "If a release skipped while paused: gh workflow run release.yml --ref main"
   else
     echo "Namespace $NAMESPACE not found; run the services deploy first."
   fi

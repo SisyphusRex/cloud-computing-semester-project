@@ -14,7 +14,7 @@ Last updated: 2026-10-18.
 | 4. GitHub variables and `prod` environment | ✅ done |
 | 5. Google OAuth client | 🟡 client exists (from the YouTube test); needs the Cloud Run origin (checklist step 3) |
 | 6. Apply `envs/prod` | ✅ applied 2026-10-18, by hand |
-| 8. First deploy from GitHub Actions | 🟡 `values.env` filled in; next: OAuth origin, then merge to `main` |
+| 8. First deploy from GitHub Actions | 🟡 `values.env` filled in; first merge rejected (we redesigned the workflows); next: bootstrap `prod-plan`, OAuth origin, then merge to `main` |
 
 ## Our environment
 
@@ -40,8 +40,9 @@ None of these are secrets.
 
 ### Deploy workflows
 
-- `terraform.yml`, `services-deploy.yml` and `frontend-deploy.yml` deploy on push to `main` (filtered by path), after CI passes and someone approves in `prod`. They can also be run by hand. Runbook §8.
-- While paused, the Terraform and services deploys skip with a warning instead of failing (`scripts/ci/check-paused.sh`). After `make cloud-resume`, re-run them.
+- First version: three workflows, one per part, each with its own approval. The first merge to `main` showed the problem: three approvals in no fixed order, and the Terraform plan only visible after approving. We rejected those runs and moved `main` back.
+- Now: one `release.yml` per merge. It shows a review sheet and the real Terraform plan, then one approval releases everything in order, rolls back automatically on a crash, and tags the commit `prod-YYYY-MM-DD.N`. `rollback.yml` returns to an earlier tag. See [release-process.md](release-process.md).
+- While paused, the release stops before asking for approval (`scripts/ci/check-paused.sh`).
 
 ### Bootstrap
 
@@ -100,17 +101,19 @@ In the GCP console, **APIs & Services**:
 
 Commit `values.env` on `development`, push, and wait for CI to pass.
 
-### 5. Deploy: merge `development` into `main`
+### 5. Release: merge `development` into `main`
 
-The merge changes `infra/`, the services and the frontend at once, so all three deploy workflows start. Each waits for CI, then for an approval in **Actions**. Approve them in this order:
+Before merging, `make release-diff` shows what will ship. After the push, one **Release** run starts. Its `review` and `plan` jobs run first; then it waits for approval in **Actions**. Go through [release-process.md](release-process.md#before-you-approve), then approve once:
 
-1. **Terraform.** `envs/prod` is already applied, so its plan should show **no changes**. Read the plan in the run before it applies. This run is the first real test of the CI identities.
-2. **Deploy services.** Builds the images, runs the migrate Job, rolls out ingest and search, and creates the load balancer. After it finishes, the Google-managed certificate takes **15–60 minutes**:
-   ```sh
-   gcloud container clusters get-credentials li --region us-central1
-   kubectl -n li describe managedcertificate li-api   # wait for Status: Active
-   ```
-3. **Deploy frontend.** Builds the nginx image with the API hostname and client ID, then deploys it to Cloud Run. Until it runs, the Cloud Run URL shows Google's placeholder page.
+- **Terraform plan:** `envs/prod` is already applied, so the plan should say **no changes**, and the apply step is skipped. This plan job is also the first real test of the CI identities.
+- **The release job:** a backup (migrations `0001`/`0002` are new), the images, the migrations, ingest and search, the load balancer, and the frontend. On this first release the API check only warns, because the Google-managed certificate takes **15–60 minutes**:
+  ```sh
+  gcloud container clusters get-credentials li --region us-central1
+  kubectl -n li describe managedcertificate li-api   # wait for Status: Active
+  ```
+- **Tag:** `prod-2026-10-18.1` and a GitHub Release appear when it succeeds.
+
+Optionally, test the rollback once: `gh workflow run rollback.yml --ref main -f tag=prod-2026-10-18.1`. It redeploys the same release and should change nothing.
 
 ### 6. Verify end to end
 

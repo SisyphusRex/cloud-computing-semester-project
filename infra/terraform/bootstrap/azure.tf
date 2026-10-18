@@ -1,7 +1,7 @@
 # Keyless GitHub Actions -> Azure: user-assigned managed identities trust
 # GitHub's OIDC tokens for one exact subject each. No app registration or secret.
 #   id-li-github       Contributor, jobs in the protected GitHub environment
-#   id-li-github-plan  Reader, pull request jobs
+#   id-li-github-plan  Reader, pull request jobs and the release plan job (prod-plan)
 
 data "azurerm_subscription" "current" {}
 
@@ -44,8 +44,17 @@ resource "azurerm_federated_identity_credential" "plan" {
   subject                   = "repo:${var.github_repository}:pull_request"
 }
 
-# Read-only: PR plans run with -refresh=false, so this mostly serves anyone
-# running a full plan by hand.
+# The release workflow's plan job, before anyone approves the release.
+resource "azurerm_federated_identity_credential" "plan_environment" {
+  name                      = "github-environment-${var.github_plan_environment}"
+  user_assigned_identity_id = azurerm_user_assigned_identity.plan.id
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = "https://token.actions.githubusercontent.com"
+  subject                   = "repo:${var.github_repository}:environment:${var.github_plan_environment}"
+}
+
+# Read-only: enough for release.yml's full-refresh plan. PR plans skip the
+# refresh (-refresh=false) and only need it to read state.
 resource "azurerm_role_assignment" "plan_reader" {
   scope                = data.azurerm_subscription.current.id
   role_definition_name = "Reader"

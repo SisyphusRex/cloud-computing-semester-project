@@ -1,0 +1,100 @@
+name: Roll back
+
+# Redeploys the services and frontend exactly as released at an earlier
+# prod-* tag: same images, same values.env and manifests. No migrations and no
+# Terraform: the database and infrastructure stay as they are.
+#   gh workflow run rollback.yml --ref main -f tag=prod-2026-10-18.1
+# Afterwards revert the bad commit on development and merge, or the next
+# release redeploys it. Runbook: docs/release-process.md
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "prod-* tag to return to (see Releases)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release # never at the same time as a release
+  cancel-in-progress: false
+
+env:
+  KUSTOMIZE_VERSION: "v5.8.3"
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  REPO: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/li
+  TAG: ${{ inputs.tag }}
+
+jobs:
+  rollback:
+    name: Roll back to ${{ inputs.tag }}
+    runs-on: ubuntu-24.04
+    environment: prod
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check the tag name
+        run: |
+          if [[ ! $TAG =~ ^prod-[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+$ ]]; then
+            echo "::error::'$TAG' isn't a prod-YYYY-MM-DD.N release tag"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          install_components: kubectl,gke-gcloud-auth-plugin
+
+      - name: Connect to the cluster
+        run: |
+          gcloud container clusters get-credentials li --region "$GCP_REGION"
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP/bin" kustomize
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Check whether the environment is paused
+        id: paused
+        run: scripts/ci/check-paused.sh sql+k8s
+
+      # Every release pushes all three images, but the registry deletes old
+      # ones (keeps the newest 10 per image, or anything under 30 days).
+      - name: Images for this release still exist
+        if: steps.paused.outputs.paused == 'false'
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "SHA=$sha" >> "$GITHUB_ENV"
+          for image in ingest search frontend; do
+            gcloud artifacts docker images describe "$REPO/$image:$sha" --format='value(image_summary.digest)' > /dev/null || {
+              echo "::error::$REPO/$image:$sha no longer exists; roll back to a newer tag"
+              exit 1
+            }
+          done
+
+      - name: Roll back ingest and search
+        if: steps.paused.outputs.paused == 'false'
+        run: scripts/ci/rollout-services.sh "$REPO" "$SHA"
+
+      - name: Roll back the frontend
+        if: steps.paused.outputs.paused == 'false'
+        run: scripts/ci/deploy-frontend.sh "$REPO/frontend:$SHA"
+
+      - name: Summary
+        if: steps.paused.outputs.paused == 'false'
+        run: |
+          {
+            echo "### Rolled back to \`$TAG\` (\`${SHA:0:7}\`)"
+            echo
+            echo "Database and infrastructure were not changed. **Next:** revert the bad commit on \`development\` and merge into \`main\`; otherwise the next release deploys it again."
+          } >> "$GITHUB_STEP_SUMMARY"

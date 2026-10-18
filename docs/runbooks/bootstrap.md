@@ -58,7 +58,8 @@ If Azure reports an unregistered resource provider, register it and re-apply: `a
 In the repository settings:
 
 1. **Variables** (Settings → Secrets and variables → Actions → Variables): add each entry from `github_variables`. None of them are secrets.
-2. **Environment** (Settings → Environments): create `prod`. It's the only way into the powerful identities, so protect it:
+2. **Environment `prod-plan`**: deployment branches `main` only, no reviewers. It only gives the read-only plan identities to `release.yml`'s plan job, so the plan can be read before anyone approves.
+3. **Environment** (Settings → Environments): create `prod`. It's the only way into the powerful identities, so protect it:
    - **Required reviewers:** add the teammates, so every apply and deploy waits for an explicit approval. **Prevent self-review** stays off (team decision, 2026-10-15): whoever triggered a deploy may approve it.
    - **Allow administrators to bypass configured protection rules** stays on (team decision, 2026-10-18). A repository admin can then deploy without an approval, so the approval binds everyone else; turn it off to make it binding for admins too.
    - **Deployment branches and tags:** **Selected branches and tags** → `main` only.
@@ -147,7 +148,7 @@ The script is `scripts/cloud-power.sh` (`DRY_RUN=1` prints the commands without 
 Things to know:
 
 - **Terraform doesn't touch the Cloud SQL on/off state** (`ignore_changes` on `activation_policy`), so a `terraform apply`, including CI's, never restarts a paused database. Terraform still creates the instance running.
-- **Deploys skip while paused** (step 8): they finish green with a warning and change nothing. After `make cloud-resume`, re-run the ones that skipped, e.g. `gh workflow run services-deploy.yml --ref main`.
+- **Deploys skip while paused** (step 8): they finish green with a warning and change nothing. After `make cloud-resume`, re-run the release: `gh workflow run release.yml --ref main`.
 - **The Deployments have no `replicas` field**, and an HPA leaves a Deployment at 0 replicas alone, so pods stay at 0 until `make cloud-resume` scales them back.
 - **Resume re-applies only the Ingress** (label `app.kubernetes.io/component=ingress`). Re-applying the whole overlay would reset the image tags to the committed placeholders.
 - The ManagedCertificate stays in the cluster while paused. If the API answers with a certificate error right after a resume, wait for the load balancer to finish provisioning (up to ~30 minutes).
@@ -170,23 +171,18 @@ In the GCP console, **Billing → Budgets & alerts**, create a budget for the pr
 
 ## 8. Deploy from GitHub Actions
 
-Three workflows deploy from `main`. Each runs in the `prod` environment, so each waits for an approval, and each first waits for CI to pass on the same commit (`wait-for-ci.yml`). They also run by hand: **Actions → Run workflow**, or `gh workflow run <file> --ref main`.
+Every push to `main` starts one **Release** run (`release.yml`): a review sheet and the real Terraform plan first, then **one** approval in `prod` runs the apply, a database backup (if there are new migrations), migrations, the services, and the frontend, in that order. Then it tags the commit `prod-YYYY-MM-DD.N`. `rollback.yml` returns to an earlier tag. What to check before approving, and how to roll back: [release process](../release-process.md).
 
-| Workflow | Runs on a push to `main` that touches | Does | While paused |
-|---|---|---|---|
-| `terraform.yml` | `infra/terraform/` | plan, then apply `envs/prod` as `github-terraform` / `id-li-github`. On PRs: a read-only plan as a PR comment | skips: refreshing the database users needs a running instance |
-| `services-deploy.yml` | `services/`, `db/`, `deploy/k8s/` | build and push both images (tagged with the commit SHA), run the migrate Job, apply the app overlay, wait for the rollouts | skips: migrations need the database, and applying the overlay would re-create the load balancer |
-| `frontend-deploy.yml` | `frontend/`, `values.env` | build the nginx image with `VITE_API_BASE` and `VITE_GOOGLE_CLIENT_ID` taken from `values.env` (the CSP's `connect-src` follows `VITE_API_BASE`), push it, `gcloud run deploy li-frontend` | runs: Cloud Run scales to zero anyway; the site shows API errors until resumed |
+| Job | Identity | While paused |
+|---|---|---|
+| `plan` (environment `prod-plan`, no reviewers) | `github-plan` / `id-li-github-plan` | stops the release here with a warning; nobody is asked to approve |
+| `release` (environment `prod`, approval) | `github-terraform` / `id-li-github` for the apply and the backup, then `github-deploy` | — |
 
-The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused when Cloud SQL isn't `ALWAYS`/`RUNNABLE`, or (services only) when the namespace exists but the Ingress doesn't. A skipped run ends green with a warning and a summary saying what to re-run. Before the first apply and the first deploy, nothing counts as paused.
-
-The approval comes before the plan is visible. Read the PR's plan comment, or what changed on `main`, before approving an apply.
+The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused when Cloud SQL isn't `ALWAYS`/`RUNNABLE`, or when the namespace exists but the Ingress doesn't. Before the first deploy, nothing counts as paused. Pull requests that touch `infra/terraform/` also get a read-only plan comment from `terraform.yml`.
 
 ### First deploy
 
-1. Steps 1–6 done: bootstrap applied, GitHub variables and the `prod` environment set, `envs/prod` applied (by hand, or by running `terraform.yml`).
-2. Fill `deploy/k8s/overlays/prod/values/values.env` from `terraform output` (each line names its output; `CORS_ORIGINS` is `frontend_url`), plus `GOOGLE_CLIENT_ID` and `PROFESSOR_EMAILS`. The services and frontend deploys refuse to run while it still has placeholders.
-3. Push to `main` and approve the services and frontend deploys. The Google-managed certificate takes 15–60 minutes to become active after the first rollout. Until the frontend deploy runs, the Cloud Run URL shows Google's placeholder page.
-4. Add the `frontend_url` output as an authorized JavaScript origin on the OAuth client (step 5), if it isn't there yet.
-
-A push that touches both `infra/terraform/` and the services starts both workflows at once; nothing orders them. If the services deploy needs the infrastructure change, approve the Terraform run first and re-run the services deploy after it finishes.
+1. Steps 1–6 done: bootstrap applied, GitHub variables and the `prod` and `prod-plan` environments set, `envs/prod` applied by hand.
+2. Fill `deploy/k8s/overlays/prod/values/values.env` from `terraform output` (each line names its output; `CORS_ORIGINS` is `frontend_url`), plus `GOOGLE_CLIENT_ID` and `PROFESSOR_EMAILS`. The release refuses to run while it still has placeholders.
+3. Add the `frontend_url` output as an authorized JavaScript origin on the OAuth client (step 5).
+4. Merge into `main`, read the review sheet and the plan (it should show no changes), and approve. The Google-managed certificate takes 15–60 minutes after the first rollout, so on the first release the API check only warns.

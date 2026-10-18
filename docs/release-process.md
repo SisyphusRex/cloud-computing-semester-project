@@ -1,0 +1,83 @@
+# Release process
+
+How code gets from `main` to production, what to check before approving a release, and how to undo one. The workflows are [release.yml](../.github/workflows/release.yml) and [rollback.yml](../.github/workflows/rollback.yml).
+
+## The flow
+
+Every push to `main` (a fast-forward or a PR merge) starts one **Release** run:
+
+```
+push to main
+  ├─ ci        waits for CI to pass on this commit
+  ├─ review    review sheet: everything since the last prod-* tag    (no credentials)
+  └─ plan      pause check + the real Terraform plan                  (read-only, prod-plan)
+        │
+        ▼  ONE approval in the prod environment
+  release   1. terraform apply of exactly that plan     (only if it has changes)
+            2. Cloud SQL backup                          (only if there are new migrations)
+            3. build + push ingest, search, frontend images, tagged with the commit SHA
+            4. migrations (Job)
+            5. roll out ingest + search                  → automatic undo if a rollout fails
+            6. frontend to Cloud Run with no traffic, check it, then switch traffic
+            7. check the API through the load balancer   → undo the services if it doesn't answer
+        │
+        ▼
+  tag       prod-YYYY-MM-DD.N + a GitHub Release listing the commits
+```
+
+- **While paused** (`make cloud-pause`), the run stops after `plan` with a warning, and nobody is asked to approve. After `make cloud-resume`, run `gh workflow run release.yml --ref main`.
+- **Pull requests** into `main` get an early Terraform plan as a comment (`terraform.yml`). That plan is only a preview. The plan that matters is the one in the release run, because that's the one that gets applied.
+- **Before merging**, `make release-diff` prints the same review sheet locally.
+
+## Tags
+
+Each successful release tags its commit `prod-YYYY-MM-DD.N` (for example `prod-2026-10-18.1`) and creates a GitHub Release.
+
+- **Review base:** the next review sheet lists everything since the latest tag.
+- **Rollback target:** every tagged commit has all three images in Artifact Registry, so `rollback.yml` can return to it.
+- **Record:** the Releases page shows what was in production and when, which helps with the milestone reports.
+
+A tag ruleset protects `prod-*` tags from being moved or deleted. Milestone tags (`m2`, `m3`) can be added by hand on top.
+
+## Before you approve
+
+The approval is the only point where production credentials are handed out. After you click **Approve**, the workflow runs with Editor rights on GCP and Contributor on Azure, applies Terraform, and migrates the database, all without stopping. Self-approval is allowed, so often the reviewer is also the author. **Your review is the safeguard.**
+
+Open the run and read the summaries of the **Review sheet** and **Terraform plan** jobs:
+
+| Area | How | Stop and ask if you see |
+|---|---|---|
+| **Workflows and `scripts/ci/`** (⚠) | Read every changed line | Anything new done with credentials: printing environment variables or tokens, `terraform destroy`, new third-party actions, new `curl` to unknown hosts. The workflow that runs is the version on `main` right now |
+| **Terraform plan** | Read the plan job's output | `destroy`, or `-/+` (replace), on Cloud SQL `li-pg`, the `li-api` IP (the hostname would change), the cluster, or Cloud Run; new IAM roles; bigger tiers or always-on instances. On a release with no infra changes the plan says "no changes"; anything else means the cloud has drifted from the code |
+| **Migrations** (⚠) | Read the SQL in the review sheet | `DROP`, renames, rewrites of existing data, `NOT NULL` without a default, anything the *previous* release can't run against (see the migration rule). A note about an edited old migration means the edit won't take effect |
+| **`values.env`** | Read the diff | Who's in `PROFESSOR_EMAILS`; `CORS_ORIGINS` and `API_HOSTNAME` must match `terraform output` |
+| **Commits** | The list since the last tag | Anything you didn't expect to ship |
+| **Timing** | — | Someone is demoing or testing; nobody can watch the run for the next 15 minutes |
+
+**Why it has to happen before approval:**
+- **The apply can't be stopped.** Step 1 applies the exact plan you read, without pausing.
+- **Migrations can't be undone** without restoring a backup and losing newer data.
+- **A workflow change runs with production credentials** the moment you approve. Afterwards it's too late to read it.
+
+If something looks wrong, **reject** the run. Nothing has happened yet; fix it on `development` and merge again.
+
+## Migration rule: expand first, contract later
+
+A rollback (below) redeploys old code but keeps the database as it is. So every migration must keep the **previous** release working:
+- **Add, then remove later:** new columns are nullable or have defaults, and new tables are fine. Drop a column only in a later release, after no code uses it.
+- **Rename in steps:** add the new column, write to both, switch reads, then drop the old one, across several releases.
+- **Never edit a migration that has been released.** Add a new one.
+
+## When something goes wrong
+
+| What happened | What to do |
+|---|---|
+| **The new API version crashes or never becomes ready** | Nothing: it's automatic. The rolling update keeps the old pod serving until the new one passes `/readyz`, and the release runs `kubectl rollout undo`. The run fails; fix the bug and merge again |
+| **The new frontend fails its check** | Nothing: traffic stays on the old revision. The run fails |
+| **Released, but the API misbehaves** | Roll back: `gh workflow run rollback.yml --ref main -f tag=<last good prod-* tag>` and approve it. It redeploys that release's images and config, with no migrations and no Terraform. Then **revert the bad commit on `development` and merge**, or the next release ships it again |
+| **Released, but the frontend misbehaves** | `rollback.yml` as above, or, fastest, move traffic back to the previous revision: `gcloud run revisions list --service li-frontend --region us-central1`, then `gcloud run services update-traffic li-frontend --region us-central1 --to-revisions=<previous>=100` |
+| **A migration damaged data** | Restore the backup the release took (its ID is in the release summary): `gcloud sql backups restore <id> --restore-instance li-pg`. **This overwrites the whole database; anything written since the backup is lost.** Then roll back the code with `rollback.yml` |
+| **A Terraform change broke something** | Revert the commit on `development` and merge; the next release plans the reverse change. Check that plan especially carefully. A deleted stateful resource (the database) can only come back from a backup |
+| **The release run itself failed partway** | Read the failed step. Steps before it took effect (an apply, a backup, migrations); steps after it didn't. Usually: fix, merge, and the next release continues from there |
+
+Rollback needs the images to still exist. Artifact Registry keeps the newest 10 versions of each image, plus anything under 30 days old, so recent tags are always available.

@@ -29,6 +29,12 @@ variable "github_repository" {
   default     = "SisyphusRex/cloud-computing-semester-project"
 }
 
+variable "github_plan_environment" {
+  description = "GitHub Actions environment (no reviewers, main only) for release.yml's read-only plan job."
+  type        = string
+  default     = "prod-plan"
+}
+
 variable "github_environment" {
   description = "GitHub Actions environment that apply/deploy jobs run in."
   type        = string

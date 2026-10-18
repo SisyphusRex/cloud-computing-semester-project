@@ -6,7 +6,7 @@ KUBECONFORM ?= kubeconform
 TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
 .PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
-	frontend-install frontend-dev frontend-test frontend-image k8s-check cloud-status cloud-pause cloud-resume
+	frontend-install frontend-dev frontend-test frontend-image k8s-check release-diff cloud-status cloud-pause cloud-resume
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -66,6 +66,10 @@ k8s-check: ## Render the Kustomize overlays and validate them against Kubernetes
 		$(KUSTOMIZE) build $$k > $$out || exit 1; \
 		$(KUBECONFORM) -strict -summary -ignore-missing-schemas < $$out || exit 1; \
 	done
+
+release-diff: ## What the next release would deploy (since the last prod-* tag), for review before merging to main
+	@git fetch --tags --quiet 2>/dev/null || true
+	@scripts/ci/release-summary.sh
 
 cloud-status: ## Show whether the deployed environment is running (Cloud SQL, pods, load balancer)
 	scripts/cloud-power.sh status

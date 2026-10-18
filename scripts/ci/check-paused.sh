@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Used by the deploy workflows: is the environment paused (make cloud-pause)?
-#   scripts/ci/check-paused.sh sql          Cloud SQL only (terraform.yml)
-#   scripts/ci/check-paused.sh sql+k8s      also the Ingress (services-deploy.yml)
+#   scripts/ci/check-paused.sh sql          Cloud SQL only
+#   scripts/ci/check-paused.sh sql+k8s      also the Ingress (release.yml, rollback.yml)
 # Writes paused=true|false to $GITHUB_OUTPUT and, when paused, a warning and a
 # job summary saying how to resume and re-run. Needs gcloud (and kubectl with a
 # current context for sql+k8s).
