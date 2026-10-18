@@ -67,17 +67,17 @@ After editing `.env`, run the `up -d` command again; after editing `frontend/.en
 
 | # | Do | Expect | Result |
 |---|---|---|---|
-| 1 | Sign in with Google as the channel account; click **Continue** on "Google hasn't verified this app" | Signed in | |
-| 2 | Open **Manage** | Manage page loads (student view = email not in `PROFESSOR_EMAILS`) | |
-| 3 | Create a course (e.g. `CS6030` / "Cloud Computing"); register my video with auto-captions; in the YouTube popup, pick the channel that owns it and allow | Lecture **indexed** with a segment count; log shows `youtube_api_call` lines, then `ingest_succeeded` | |
-| 4 | Search the course for a word I say in the video; click the result | Highlighted excerpt; YouTube opens a few seconds before the word | |
-| 5 | Register the same video again | Still indexed, same segment count | |
-| 6 | Register a video I don't own | "You can only register videos from your own YouTube channel" | |
-| 7 | (Optional) Register my video with only uploaded captions | Lecture failed: "The video has no auto-generated captions" | |
-| 8 | Delete a lecture | Gone from the list; search no longer finds it | |
-| 9 | Sign out; sign in as the student account; search the course | Student view, no Manage page; search works | |
+| 1 | Sign in with Google as the channel account; click **Continue** on "Google hasn't verified this app" | Signed in | ✅ 2026-10-18 |
+| 2 | Open **Manage** | Manage page loads (student view = email not in `PROFESSOR_EMAILS`) | ✅ 2026-10-18 |
+| 3 | Create a course (e.g. `CS6030` / "Cloud Computing"); register my video with auto-captions; in the YouTube popup, pick the channel that owns it and allow | Lecture **indexed** with a segment count; log shows `youtube_api_call` lines, then `ingest_succeeded` | ✅ 2026-10-18: "Welcome to Michigan" indexed, 37 segments |
+| 4 | Search the course for a word I say in the video; click the result | Highlighted excerpt; YouTube opens a few seconds before the word | ✅ 2026-10-18: searched "Concourse", one hit at `t=94s`; the word comes ~10 s after the jump |
+| 5 | Register the same video again | Still indexed, same segment count | ✅ 2026-10-18: still indexed, 37 segments; `count(*)` on segments = 37 |
+| 6 | Register a video I don't own | "You can only register videos from your own YouTube channel" | ✅ 2026-10-18: `403`; log shows only `videos.list` + `channels.list` (2 quota units), then `ingest_failed` `not_video_owner` with `lecture_id: null` |
+| 7 | (Optional) Register my video with only uploaded captions | Lecture failed: "The video has no auto-generated captions" | ⏭️ Skipped 2026-10-18: no such video on the channel (covered by `test_uploaded_tracks_are_ignored` and the route test) |
+| 8 | Delete a lecture | Gone from the list; search no longer finds it | ✅ 2026-10-18: deleted; search for "Concourse" returned no results; `count(*)` on segments = 0 (cascade). Video re-registered afterwards for case 9 |
+| 9 | Sign out; sign in as the student account; search the course | Student view, no Manage page; search works |  ✅ 2026-10-18: no Manage page or link; "Concourse" found, link plays at 1:34 |
 
-Video used: <!-- URL, length -->
+Video used: "Welcome to Michigan" <!-- URL, length -->
 
 Check what was stored after case 3:
 
@@ -86,17 +86,23 @@ sudo docker compose exec db psql -U li -d li -c \
   "select start_ms/1000 as sec, left(text, 80) from segments order by start_ms limit 15;"
 ```
 
-- [ ] Text is clean running speech: no repeated phrases, no `<c>` or timestamp tags
-- [ ] Times match the video
+- [x] Text is clean running speech: no repeated phrases, no `<c>` or timestamp tags (2026-10-18: clean; see findings for `[Music]`)
+- [x] Times look plausible: windows start ~15–20 s apart; short segments at 129–195 s match music-only stretches (spot-check against the video in case 4)
 
 ## 5. Findings
 
 Copy the conclusions into the "Results" note in the implementation plan when done.
 
 - **Does `captions.download` serve the auto-generated track?** (case 3; a `403 not_video_owner` on my own video means no)
+  - **Yes** (2026-10-18): case 3 indexed 37 segments, and only ASR tracks are ever selected.
 - **Does the real VTT match `services/ingest/tests/fixtures/lecture4.vtt`?** (word-timing tags, rolling lines, `" "` line after each timing)
-- **Deep-link accuracy** (seconds between the link's start and the word):
+  - **Parses the same** (2026-10-18): no tags or rolling repeats survive in the stored text, so the parser handles the real format. The raw VTT wasn't captured, so the fixture is still unconfirmed byte for byte.
+  - ASR inserts sound tags like `[Music]`; they are indexed as words, and some segments are only `[Music]`. Follow-up: strip `[...]` tags in `captions.py` and drop cues left empty.
+  - Repeated words ("the the the the the" at ~0:20) are kept; dedup removes only whole repeated lines. Probably the speaker's stammer; check in the video.
+- **Deep-link accuracy** (seconds between the link's start and the word): ~10 s early ("Concourse", 2026-10-18). Expected: links open at the start of a window of up to ~20 s, so a word mid-window plays ~10 s in. Possible follow-up: shorter windows (`max_ms` in `merge_segments`) for tighter links, at the cost of phrases split across segments.
 - **Other surprises / errors:**
+  - gunicorn 26 logged `Control server error: Permission denied: '/home/app'`; fixed with `--no-control-socket` (`bcd1e71`).
+  - A full registration costs 252 quota units (1 + 1 + 50 + 200) and took 650 ms; the default daily quota of 10,000 allows ~39 registrations a day.
 
 ## 6. Clean up
 
@@ -104,4 +110,4 @@ Copy the conclusions into the "Results" note in the implementation plan when don
 sudo docker compose -f docker-compose.yml -f docker-compose.google.yml down
 ```
 
-- [ ] Set `VITE_DEV_AUTH=1` in `frontend/.env.local` to return to dev sign-in (keep `.env` and the override for next time)
+- [x] Stack stopped (2026-10-18); `VITE_DEV_AUTH=1` set in `frontend/.env.local` to return to dev sign-in (kept `.env` and the override for next time)
