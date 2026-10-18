@@ -149,26 +149,11 @@ Do this in the GCP project Terraform will use. Any project works, but this one r
 
 ### 2. Start the APIs with real Google auth
 
-`docker-compose.yml` hardcodes dev auth, so add an override. Create two git-ignored files in the repo root.
-
-`.env`, which Compose reads itself, so the values also work under `sudo`:
+`docker-compose.yml` hardcodes dev auth. The override `docker-compose.google.yml` (in the repo root) turns it off for `migrate`, `ingest` and `search`, and reads two values from `.env`. Create `.env` in the repo root; it's git-ignored, and Compose reads it itself, so the values also work under `sudo`:
 
 ```
 GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com
 PROFESSOR_EMAILS=<your Google email>
-```
-
-`docker-compose.google.yml`:
-
-```yaml
-x-google-env: &google-env
-  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in .env}
-  PROFESSOR_EMAILS: ${PROFESSOR_EMAILS:?set in .env}
-  LI_DEV_AUTH: "0"
-services:
-  migrate: { environment: *google-env }
-  ingest:  { environment: *google-env }
-  search:  { environment: *google-env }
 ```
 
 Then start the stack (prefix `sudo` if your user isn't in the `docker` group):

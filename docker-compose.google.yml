@@ -1,0 +1,10 @@
+# Real Google sign-in for the local stack (docs/implementation-plan.md, "Next: real Google/YouTube test").
+# Values come from .env (git-ignored): GOOGLE_CLIENT_ID, PROFESSOR_EMAILS.
+x-google-env: &google-env
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in .env}
+  PROFESSOR_EMAILS: ${PROFESSOR_EMAILS:?set in .env}
+  LI_DEV_AUTH: "0"
+services:
+  migrate: { environment: *google-env }
+  ingest:  { environment: *google-env }
+  search:  { environment: *google-env }
