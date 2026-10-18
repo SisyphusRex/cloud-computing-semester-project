@@ -15,6 +15,7 @@ resource "google_sql_database_instance" "this" {
     availability_type = "ZONAL"
     disk_type         = "PD_SSD"
     disk_size         = 10
+    activation_policy = "ALWAYS"
 
     ip_configuration {
       ipv4_enabled    = false
@@ -36,6 +37,12 @@ resource "google_sql_database_instance" "this" {
     insights_config {
       query_insights_enabled = true
     }
+  }
+
+  # Started and stopped outside Terraform (scripts/cloud-power.sh) to save
+  # cost between test sessions; an apply must not restart a stopped instance.
+  lifecycle {
+    ignore_changes = [settings[0].activation_policy]
   }
 }
 

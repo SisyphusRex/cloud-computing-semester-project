@@ -125,15 +125,43 @@ Rough monthly costs while everything runs. Check the [GCP pricing calculator](ht
 | Cloud NAT, Artifact Registry, logging | a few dollars |
 | Static Web Apps (Free) | $0 |
 
-Between work sessions:
+### Between test sessions: pause
+
+Pausing keeps the cluster, the database, the images and the reserved IP, so the API hostname, `values.env`, the CSP and the OAuth origins all stay valid. It needs `gcloud`, `kubectl` and `gke-gcloud-auth-plugin` ([install](../local-development.md#install-cloud-tools-optional)), or Cloud Shell, which has all three.
 
 ```sh
-# Stop Cloud SQL (storage is still billed), and start it again later
-gcloud sql instances patch li-pg --activation-policy=NEVER
-gcloud sql instances patch li-pg --activation-policy=ALWAYS
-
-# Or remove the whole environment; bootstrap and its state stay
-terraform -chdir=infra/terraform/envs/prod destroy
+make cloud-pause     # pods to 0, delete the Ingress (load balancer), stop Cloud SQL
+make cloud-resume    # start Cloud SQL, pods back to 1, re-create the Ingress (~5–10 min)
+make cloud-status    # what's running and billed right now
 ```
 
-Destroying `envs/prod` deletes the database. Make sure the nightly backup (step 5 of the plan) has run, or the data is disposable.
+The script is `scripts/cloud-power.sh` (`DRY_RUN=1` prints the commands without running them). It uses the current `gcloud` project unless `GCP_PROJECT` is set.
+
+| While paused | Approx. / month |
+|---|---|
+| Cloud SQL storage (10 GB SSD) | ~$2 |
+| Reserved IP `li-api`, not attached to a load balancer | ~$7 |
+| Autopilot (no pods), Cloud NAT, Artifact Registry | about $0 |
+
+Things to know:
+
+- **Terraform doesn't touch the Cloud SQL on/off state** (`ignore_changes` on `activation_policy`), so a `terraform apply`, including CI's, never restarts a paused database. Terraform still creates the instance running.
+- **The Deployments have no `replicas` field**, and an HPA leaves a Deployment at 0 replicas alone. A services deploy while paused therefore rolls out new images without starting pods; run `make cloud-resume` to start them.
+- **Resume re-applies only the Ingress** (label `app.kubernetes.io/component=ingress`). Re-applying the whole overlay would reset the image tags to the committed placeholders.
+- The ManagedCertificate stays in the cluster while paused. If the API answers with a certificate error right after a resume, wait for the load balancer to finish provisioning (up to ~30 minutes).
+- A paused Cloud SQL instance can't be backed up, so the nightly backup CronJob (step 5) fails while paused.
+
+### When idle for longer: destroy
+
+```sh
+terraform -chdir=infra/terraform/envs/prod destroy   # bootstrap and its state stay
+```
+
+This brings the GCP cost to $0, but:
+
+- **It deletes the database.** Make sure the nightly backup (step 5 of the plan) has run, or the data is disposable.
+- **It releases the IP, which changes the API hostname.** After re-creating, update `values.env`, the CSP `connect-src` and the OAuth client's origins, and rebuild the frontend with the new `VITE_API_BASE`.
+
+### Budget alert
+
+In the GCP console, **Billing → Budgets & alerts**, create a budget for the project (for example $25) with email alerts at 50%, 90% and 100%. A budget only warns; it doesn't stop spending. It catches a forgotten `cloud-resume`.

@@ -75,6 +75,18 @@ else
   hint "curl -LsSf https://astral.sh/uv/install.sh | sh"
 fi
 
+# Only for make cloud-status / cloud-pause / cloud-resume.
+cloud_missing=()
+for tool in gcloud kubectl gke-gcloud-auth-plugin; do
+  command -v "$tool" >/dev/null 2>&1 || cloud_missing+=("$tool")
+done
+if (( ${#cloud_missing[@]} == 0 )); then
+  ok "gcloud $(version_of gcloud --version), kubectl $(version_of kubectl version --client), gke-gcloud-auth-plugin (make cloud-*)"
+else
+  optional "${cloud_missing[*]} not found: needed only for make cloud-status / cloud-pause / cloud-resume"
+  hint "see $GUIDE#install-cloud-tools-optional, or run them from Cloud Shell"
+fi
+
 echo
 echo "Docker access"
 if command -v docker >/dev/null 2>&1; then

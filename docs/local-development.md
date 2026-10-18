@@ -23,7 +23,7 @@ The frontend's dev server forwards `/ingest/*` to `:8081` and `/search/*` to `:8
 | Node.js with npm | 22.22 or newer (`frontend/.nvmrc`) | the frontend |
 | [uv](https://docs.astral.sh/uv/) | latest; it installs Python 3.12 itself | only `make install`, `lint`, `test`, `test-db` |
 
-You don't need Python packages, Postgres, Terraform, kubectl, or any cloud CLI to run the app. `make k8s-check` (kustomize, kubeconform) and Terraform are optional locally, because CI checks them on every push.
+You don't need Python packages, Postgres, Terraform, kubectl, or any cloud CLI to run the app. `make k8s-check` (kustomize, kubeconform) and Terraform are optional locally, because CI checks them on every push. `gcloud`, `kubectl` and `gke-gcloud-auth-plugin` are needed only to pause and resume the deployed environment ([Install cloud tools](#install-cloud-tools-optional)).
 
 ## Install prerequisites: Linux
 
@@ -70,6 +70,29 @@ The Makefile and scripts need a Linux shell, so on Windows everything runs insid
 5. Open http://localhost:5173 in your normal Windows browser; WSL2 forwards `localhost`.
 
 With Docker Desktop's WSL integration, `docker` works without `sudo`, so you can skip the next section.
+
+## Install cloud tools (optional)
+
+Only for `make cloud-status`, `cloud-pause` and `cloud-resume`, which pause and resume the deployed environment between test sessions ([runbook §7](runbooks/bootstrap.md#7-control-cost)). Running the app locally doesn't need them. On Ubuntu, Debian or WSL2, all three come from Google's apt repository:
+
+```sh
+sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
+curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+  | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+  | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+sudo apt-get update
+sudo apt-get install -y google-cloud-cli kubectl google-cloud-cli-gke-gcloud-auth-plugin
+
+gcloud auth login
+gcloud config set project <project-id>
+```
+
+`gke-gcloud-auth-plugin` is how `kubectl` signs in to GKE; without it, every `kubectl` call to the cluster fails. The scripts use `kubectl kustomize`, so a separate `kustomize` isn't needed.
+
+Your Google account also needs permission to stop and start Cloud SQL and to change workloads in the cluster: Owner covers both; otherwise Cloud SQL Admin and Kubernetes Engine Developer.
+
+**Without installing anything:** [Cloud Shell](https://shell.cloud.google.com) has all three tools and is already signed in. Clone the repository there and run the `make cloud-*` targets.
 
 ## Docker permissions
 

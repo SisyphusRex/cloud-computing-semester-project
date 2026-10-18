@@ -2,7 +2,7 @@
 
 Living plan for building Lecture Indexer (LI) from the [Milestone 1 proposal](proposal/CS6030_F26_ProjectProposal_LectureIndexer.pdf). Update the status table and decisions as work lands.
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-18.
 
 ## Status
 
@@ -66,13 +66,14 @@ Per the proposal:
 | **Professor detection**: the frontend calls `GET /ingest/courses`; 403 means student | No extra endpoint needed; roles stay server-side. |
 | **The YouTube access token stays in browser memory** until shortly before it expires | One consent popup per session, never stored. |
 | **Only YouTube's auto-generated (ASR) captions**, fetched with `captions.download`; tracks the creator uploaded are ignored, and users never upload caption files to us | One caption source, one format (WebVTT). A video without an ASR track fails with `422 no_captions`. |
+| **Pause between test sessions instead of destroying**: `make cloud-pause` scales the pods to 0, deletes the Ingress (load balancer), and stops Cloud SQL; Terraform ignores `activation_policy` | Idle cost drops to ~$9/month (SQL storage, reserved IP), and the reserved IP, and with it the API hostname, survives. Destroying changes the hostname, which means editing `values.env`, the CSP and the OAuth origins. Ignoring the on/off state stops a CI apply from restarting a paused database. |
 | `li_common.logs`, not `li_common.logging` | A module named `logging` shadows the standard library when Python runs from inside the package folder. |
 
 ## Open items
 
 - **YouTube scope.** The proposal says the professor's YouTube token is requested with a read-only scope, but `captions.list` and `captions.download` only accept `youtube.force-ssl`. The token is used for one request and never stored or logged. Correct this in the M3 security review.
 - **Not yet verified:** calls to the real YouTube API and real Google ID tokens (tests mock both); the next step below covers them. `docker build` and the compose stack are verified by the `compose` job in `ci.yml` on the first push.
-- **Infrastructure not applied.** Someone with Owner on both clouds follows [runbooks/bootstrap.md](runbooks/bootstrap.md): state bucket, `bootstrap/`, GitHub variables and the `prod` environment, the OAuth client (console only), then `envs/prod`. It needs `gcloud` and `az`. Provisioning starts billing (roughly $40–60/month while running; see the runbook's cost table), so apply close to when step 4 is ready to deploy, and destroy when idle.
+- **Infrastructure not applied.** Someone with Owner on both clouds follows [runbooks/bootstrap.md](runbooks/bootstrap.md): state bucket, `bootstrap/`, GitHub variables and the `prod` environment, the OAuth client (console only), then `envs/prod`. It needs `gcloud` and `az`. Provisioning starts billing (roughly $40–60/month while running; see the runbook's cost table), so apply close to when step 4 is ready to deploy. Between test sessions, `make cloud-pause` / `make cloud-resume` cut idle cost to ~$9/month without changing the API hostname; destroy when idle for longer (runbook §7).
 - **Deploy workflows not written yet.** Only `ci.yml` exists. The team's empty placeholders for `terraform.yml`, `services-deploy.yml`, and `frontend-deploy.yml` were removed on 2026-10-15, because GitHub reports an empty workflow file as a failed run on every push. Recreate them at deploy time (see "After that: deploy"); they need bootstrap applied (GitHub variables, the `prod` environment).
 - **Deploy order.** The migrate overlay doesn't include the `li` Namespace, so the deploy workflow must create the namespace (or apply the app overlay) before running the migrate Job.
 - **CSP `connect-src`** in `frontend/staticwebapp.config.json` allows `https://*.sslip.io`; narrow it to the real `api_hostname` once known.
