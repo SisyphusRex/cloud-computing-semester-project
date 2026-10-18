@@ -19,7 +19,7 @@ echo "Candidate revision: $candidate"
 
 ok=false
 for _ in $(seq 12); do
-  if [[ $(curl -s "$candidate/healthz") == ok ]] && curl -sf "$candidate/" | grep -q 'id="root"'; then
+  if [[ $(curl -s "$candidate/health") == ok ]] && curl -sf "$candidate/" | grep -q 'id="root"'; then
     ok=true
     break
   fi

@@ -117,7 +117,7 @@ Checks: `terraform fmt -check -recursive`, `terraform validate` in both roots, `
 | `terraform` | `fmt -check`, `validate` in both roots, mocked `terraform test` |
 | `k8s` | `make k8s-check`: `kustomize build` + `kubeconform -strict` on both overlays |
 | `frontend` | `npm ci`, lint, vitest, production build |
-| `frontend-image` | `scripts/test-frontend-image.sh`: builds the nginx image, then checks the app, SPA fallback, 404s, `/healthz`, and the CSP and cache headers |
+| `frontend-image` | `scripts/test-frontend-image.sh`: builds the nginx image, then checks the app, SPA fallback, 404s, `/health`, and the CSP and cache headers |
 
 **Kubernetes (`deploy/k8s`)**
 

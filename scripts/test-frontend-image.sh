@@ -16,7 +16,7 @@ container=$($DOCKER run -d --rm -p "127.0.0.1:$PORT:8080" "$IMAGE")
 trap '$DOCKER stop "$container" > /dev/null' EXIT
 
 for _ in $(seq 20); do
-  curl -sf "http://127.0.0.1:$PORT/healthz" > /dev/null && break
+  curl -sf "http://127.0.0.1:$PORT/health" > /dev/null && break
   sleep 0.5
 done
 
@@ -35,7 +35,7 @@ echo "Frontend image"
 check "/ serves the app" grep -q 'id="root"' <(curl -s "http://127.0.0.1:$PORT/")
 check "/courses/1 falls back to index.html" test "$(status /courses/1)" = 200
 check "missing asset is 404" test "$(status /assets/missing.js)" = 404
-check "/healthz is 200" test "$(status /healthz)" = 200
+check "/health is 200" test "$(status /health)" = 200
 check "CSP allows the API origin" grep -qi "content-security-policy:.*connect-src 'self' https://accounts.google.com/gsi/ $API_BASE;" <(headers /)
 check "index.html is not cached" grep -qi '^cache-control: no-cache' <(headers /)
 check "headers also on 404s" grep -qi '^x-content-type-options: nosniff' <(headers /assets/missing.js)
