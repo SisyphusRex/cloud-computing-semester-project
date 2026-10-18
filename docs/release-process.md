@@ -47,7 +47,7 @@ Everything in a release can be done from github.com; `gh` only saves clicks. You
 |---|---|
 | **Start a release again** (after a pause, or to retry) | **Actions → Release → Run workflow**, branch `main`, **Run workflow** |
 | **Roll back** | **Actions → Roll back → Run workflow**, branch `main`, type the tag (for example `prod-2026-10-18.1`), **Run workflow** |
-| **Read the review sheet and plan** | Open the run; each job's summary is on the run page under the job graph |
+| **Read the review sheet and plan** | Open the run, click the **Review sheet** job (or **Terraform plan (read-only)**) in the left sidebar, and expand its main step. The same text appears as job summaries on the run page, but GitHub shows those only once the run has finished |
 | **Approve or reject** | On the run page, **Review deployments**, tick `prod`, then **Approve and deploy** or **Reject** |
 | **Cancel a run** | On the run page, **Cancel workflow** (top right) |
 | **Find release tags** | **Releases** (right-hand side of the repository page) lists every `prod-*` tag with its commits |
@@ -58,7 +58,7 @@ Everything in a release can be done from github.com; `gh` only saves clicks. You
 
 The approval is the only point where production credentials are handed out. After you click **Approve**, the workflow runs with Editor rights on GCP and Contributor on Azure, applies Terraform, and migrates the database, all without stopping. Self-approval is allowed, so often the reviewer is also the author. **Your review is the safeguard.**
 
-Open the run and read the summaries of the **Review sheet** and **Terraform plan** jobs:
+Open the run and read the **Review sheet** job's log and the **Terraform plan** job's **Plan** step (walkthrough below):
 
 | Area | How | Stop and ask if you see |
 |---|---|---|
@@ -75,6 +75,27 @@ Open the run and read the summaries of the **Review sheet** and **Terraform plan
 - **A workflow change runs with production credentials** the moment you approve. Afterwards it's too late to read it.
 
 If something looks wrong, **reject** the run. Nothing has happened yet; fix it on `development` and merge again.
+
+### Reviewing as a teammate
+
+How a `prod` reviewer who didn't write the change goes through a waiting release, on github.com only:
+
+1. **Notice it.** GitHub emails the `prod` reviewers *"Deployment review requested"*, and the Actions tab shows the Release run as **Waiting**. Open the run.
+2. **Who pushed what.** The top of the run page shows the commit, the branch (`main`) and who pushed it. Click the commit and read its message.
+3. **Everything this release ships, not just the last commit.** Open **Releases**, note the latest `prod-*` tag, and open `https://github.com/SisyphusRex/cloud-computing-semester-project/compare/<that tag>...<commit>`. Or read the **Review sheet** job's log, which lists the same commits and files. The branch's **Activity** page (`…/activity?ref=main`) shows each push to `main` with a "compare changes" link.
+4. **Read the risky parts, in this order.** On the compare page's **Files changed** tab, type a path into the filter above the file tree. Mark files as **Viewed** as you go.
+
+   | Filter / place | Why | Reject if |
+   |---|---|---|
+   | `.github/workflows`, `scripts/ci` | Runs with production credentials as soon as you approve | Printing environment variables or tokens (`env`, `printenv`, `set -x`); `curl` to unknown hosts; `terraform destroy`; new `uses:` actions from unfamiliar publishers; wider `permissions:`; a changed `environment:` |
+   | **Terraform plan** job → **Plan** step | Approving applies exactly this plan | Anything but "No changes" that the commits don't explain; any unexplained `destroy` or `-/+` on the database, the IP or the cluster |
+   | `db/migrations` | Runs once, can't be undone | `DROP`, renames, data rewrites, an edited old migration |
+   | `deploy/k8s/overlays/prod/values/values.env` | Who gets professor rights; which site may call the API | Unknown emails in `PROFESSOR_EMAILS`; URLs that aren't ours |
+   | `services`, `frontend` | App behavior; CI already tested it | Changes no commit message explains |
+
+5. **CI passed.** The run's **ci / CI passed on this commit** job must be green.
+6. **Ask, don't guess.** Comment on the commit or message the author. If it stays unclear, **Review deployments → Reject** with a comment saying why. Nothing has been deployed, so rejecting costs nothing.
+7. **Approve with a note.** **Review deployments**, tick `prod`, write what you checked (for example *"Workflows and migrations reviewed, plan has no changes, values.env OK"*), then **Approve and deploy**. The comment stays in the deployment history.
 
 ## Migration rule: expand first, contract later
 

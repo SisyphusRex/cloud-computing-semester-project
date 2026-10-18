@@ -48,8 +48,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # history and tags, to diff against the last prod-* tag
+      # Also printed to the log: GitHub shows job summaries only once the
+      # whole run has finished, but the log is readable while it waits for approval.
       - id: summary
-        run: scripts/ci/release-summary.sh >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          set -o pipefail
+          scripts/ci/release-summary.sh | tee -a "$GITHUB_STEP_SUMMARY"
 
   plan:
     name: Terraform plan (read-only)
