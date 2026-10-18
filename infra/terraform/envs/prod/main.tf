@@ -43,10 +43,12 @@ module "artifact_registry" {
   region  = var.gcp_region
   readers = { gke-nodes = "serviceAccount:${module.gke.node_service_account}" }
   writers = { ci-deploy = "serviceAccount:${var.ci_deploy_service_account}" }
+  # The API is enabled in this same run; creating the repository first fails.
+  depends_on = [google_project_service.this]
 }
 
-# The SPA on Cloud Run (docs/adr/0001-frontend-on-cloud-run.md). CI deploys
-# revisions; Terraform owns the service, its access and its service account.
+# The SPA on Cloud Run; why: docs/architecture_decision_records/0001-frontend-on-cloud-run.md.
+# CI deploys revisions; Terraform owns the service, its access and its service account.
 module "frontend" {
   source     = "../../modules/cloud-run-frontend"
   name       = "${var.name}-frontend"

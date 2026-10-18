@@ -12,9 +12,9 @@ Last updated: 2026-10-18.
 | 2. Terraform state bucket | ✅ done |
 | 3. Apply `bootstrap/` (CI identities) | ✅ done, after a region fix (below) |
 | 4. GitHub variables and `prod` environment | ✅ done |
-| 5. Google OAuth client | 🟡 client exists (from the YouTube test); needs the Cloud Run origin, after step 6 |
-| 6. Apply `envs/prod` | 🟡 apply started 2026-10-18, by hand |
-| 8. First deploy from GitHub Actions | todo: checklist below |
+| 5. Google OAuth client | 🟡 client exists (from the YouTube test); needs the Cloud Run origin (checklist step 3) |
+| 6. Apply `envs/prod` | ✅ applied 2026-10-18, by hand |
+| 8. First deploy from GitHub Actions | 🟡 `values.env` filled in; next: OAuth origin, then merge to `main` |
 
 ## Our environment
 
@@ -26,6 +26,8 @@ None of these are secrets.
 | Terraform state | `gs://lecture-indexer-511419-tfstate` (versioned, public access blocked) |
 | Azure subscription | Azure for Students, `898a010f-f766-4657-b683-6fb3c7399a77`; resources in `northcentralus` |
 | CI identities | GCP: `github-terraform`, `github-deploy`, `github-plan`. Azure: `id-li-github`, `id-li-github-plan` (resource group `rg-li-ci`) |
+| API | `https://34-128-137-19.sslip.io` (global IP `34.128.137.19`) |
+| Frontend | `https://li-frontend-byshtpdfha-uc.a.run.app` (Cloud Run `li-frontend`) |
 | GitHub `prod` environment | Deploys only from `main`; reviewers awojo, joshuajubenville, SisyphusRex; self-approval allowed; admin bypass on (team decision) |
 
 ## What we did
@@ -51,11 +53,11 @@ None of these are secrets.
 
 ### Frontend moved to Cloud Run
 
-Static Web Apps isn't offered in any region our subscription allows, so the frontend now runs as an nginx container on Cloud Run (`li-frontend`, scales to zero). Why, and what it changes: [ADR 0001](adr/0001-frontend-on-cloud-run.md). Azure now holds only the nightly backups (step 5 of the plan) and the identities that manage them.
+Static Web Apps isn't offered in any region our subscription allows, so the frontend now runs as an nginx container on Cloud Run (`li-frontend`, scales to zero). Why, and what it changes: [ADR 0001](architecture_decision_records/0001-frontend-on-cloud-run.md). Azure now holds only the nightly backups (step 5 of the plan) and the identities that manage them.
 
 ### `envs/prod`
 
-Plan: 52 resources to add (network, GKE Autopilot `li`, Cloud SQL `li-pg`, Artifact Registry `li`, Secret Manager, workload service accounts, Cloud Run `li-frontend`, global IP `li-api`, Azure `rg-li-prod`). Applied by hand on 2026-10-18. **Billing runs from here:** about $40–60/month while everything runs, about $9/month when paused.
+Plan: 52 resources to add (network, GKE Autopilot `li`, Cloud SQL `li-pg`, Artifact Registry `li`, Secret Manager, workload service accounts, Cloud Run `li-frontend`, global IP `li-api`, Azure `rg-li-prod`). Applied by hand on 2026-10-18. GKE took 7m38s and Cloud SQL 13m4s. The first run failed on the Artifact Registry repository, because the module didn't wait for its API (enabled in the same run) to be ready; we added the missing `depends_on`, and a second apply created the last 3 resources. A fresh plan shows no changes. **Billing runs from here:** about $40–60/month while everything runs, about $9/month when paused.
 
 ## Checklist: first deploy
 

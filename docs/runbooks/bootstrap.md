@@ -6,7 +6,7 @@ One person does steps 1–5 once. After that, CI runs Terraform (step 4 of the [
 
 - [Terraform](https://developer.hashicorp.com/terraform/install) 1.16.4. With [tfenv](https://github.com/tfutils/tfenv), `infra/terraform/.terraform-version` selects it automatically.
 - [gcloud CLI](https://cloud.google.com/sdk/docs/install) and [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli).
-- A GCP project with billing (GCP credits), and the Azure for Students subscription. That subscription may only deploy to `canadacentral`, `mexicocentral`, `northcentralus`, `francecentral` and `swedencentral` (policy `sys.regionrestriction`); our Azure resources use `northcentralus`. It's why the frontend runs on Cloud Run: [ADR 0001](../adr/0001-frontend-on-cloud-run.md).
+- A GCP project with billing (GCP credits), and the Azure for Students subscription. That subscription may only deploy to `canadacentral`, `mexicocentral`, `northcentralus`, `francecentral` and `swedencentral` (policy `sys.regionrestriction`); our Azure resources use `northcentralus`. It's why the frontend runs on Cloud Run: [ADR 0001](../architecture_decision_records/0001-frontend-on-cloud-run.md).
 - Owner on both. You need Owner, or Owner plus User Access Administrator in Azure, to create the CI identities and their role assignments.
 
 ## 1. Sign in and pick the project
