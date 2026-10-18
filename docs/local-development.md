@@ -116,7 +116,7 @@ Open **http://localhost:5173**:
 - **`prof@example.edu`** sees the **Manage** page: create courses, register and remove lectures.
 - **`student@example.edu`** (or any other email): browse courses and search them.
 
-**Registering a lecture fails in dev mode**, with a YouTube token error. The Ingest API really calls YouTube with your Google token, so it needs real Google sign-in with your own captioned video. That's described in the implementation plan, [Next: real Google/YouTube test](implementation-plan.md#next-real-googleyoutube-test-free-before-deploying).
+**Registering a lecture fails in dev mode**, with a YouTube token error. The Ingest API really calls YouTube with your Google token, so it needs real Google sign-in and your own video with YouTube auto-generated captions. That's described in the implementation plan, [Next: real Google/YouTube test](implementation-plan.md#next-real-googleyoutube-test-free-before-deploying).
 
 ## Day to day
 
