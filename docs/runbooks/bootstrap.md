@@ -1,6 +1,6 @@
 # Bootstrap and provision the cloud infrastructure
 
-One person does steps 1–5 once. After that, CI runs Terraform (step 4 of the [implementation plan](../implementation-plan.md)). Steps 6–7 apply to anyone who provisions or tears down the production environment, and step 8 describes how GitHub Actions deploys.
+One person does steps 1–5 once. After that, CI runs Terraform (step 4 of the [implementation plan](../milestones/m2_prototype_review/implementation-plan.md)). Steps 6–7 apply to anyone who provisions or tears down the production environment, and step 8 describes how GitHub Actions deploys.
 
 ## Prerequisites
 

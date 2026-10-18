@@ -1,4 +1,4 @@
-# Real Google sign-in for the local stack (docs/implementation-plan.md, "Next: real Google/YouTube test").
+# Real Google sign-in for the local stack (docs/milestones/m2_prototype_review/implementation-plan.md, "Next: real Google/YouTube test").
 # Values come from .env (git-ignored): GOOGLE_CLIENT_ID, PROFESSOR_EMAILS.
 x-google-env: &google-env
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in .env}

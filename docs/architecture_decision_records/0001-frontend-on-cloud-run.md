@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-18
-- **Changes:** the frontend hosting in the [Milestone 1 proposal](../proposal/CS6030_F26_ProjectProposal_LectureIndexer.pdf)
+- **Changes:** the frontend hosting in the [Milestone 1 proposal](../milestones/m1_project_proposal/CS6030_F26_ProjectProposal_LectureIndexer.pdf)
 
 ## Context
 
@@ -30,7 +30,7 @@ The other Azure resources (the CI identities, and the backup storage in step 5) 
 
 ## Decision
 
-Serve the frontend from **Google Cloud Run**, which the [course requirements](../proposal/project-requirements.md) list as a frontend host alongside Static Web Apps.
+Serve the frontend from **Google Cloud Run**, which the [course requirements](../milestones/m1_project_proposal/project-requirements.md) list as a frontend host alongside Static Web Apps.
 
 - The built app is served by nginx in a container (`frontend/Dockerfile`), with the security headers that `staticwebapp.config.json` used to set, including the Content-Security-Policy.
 - Terraform creates the Cloud Run service `li-frontend` (public, 0–2 instances); the `frontend-deploy.yml` workflow builds the image and deploys each revision.

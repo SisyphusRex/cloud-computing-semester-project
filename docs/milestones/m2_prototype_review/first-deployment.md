@@ -1,6 +1,6 @@
 # First deployment
 
-What we've done to get Lecture Indexer into production, and the checklist for the first deploy. The general procedure is in the [bootstrap runbook](runbooks/bootstrap.md); this page records what actually happened in our project, with the real names, and what's left.
+What we've done to get Lecture Indexer into production, and the checklist for the first deploy. The general procedure is in the [bootstrap runbook](../../runbooks/bootstrap.md); this page records what actually happened in our project, with the real names, and what's left.
 
 Last updated: 2026-10-18.
 
@@ -41,7 +41,7 @@ None of these are secrets.
 ### Deploy workflows
 
 - First version: three workflows, one per part, each with its own approval. The first merge to `main` showed the problem: three approvals in no fixed order, and the Terraform plan only visible after approving. We rejected those runs and moved `main` back.
-- Now: one `release.yml` per merge. It shows a review sheet and the real Terraform plan, then one approval releases everything in order, rolls back automatically on a crash, and tags the commit `prod-YYYY-MM-DD.N`. `rollback.yml` returns to an earlier tag. See [release-process.md](release-process.md).
+- Now: one `release.yml` per merge. It shows a review sheet and the real Terraform plan, then one approval releases everything in order, rolls back automatically on a crash, and tags the commit `prod-YYYY-MM-DD.N`. `rollback.yml` returns to an earlier tag. See [release-process.md](../../release-process.md).
 - While paused, the release stops before asking for approval (`scripts/ci/check-paused.sh`).
 
 ### Bootstrap
@@ -55,7 +55,7 @@ None of these are secrets.
 
 ### Frontend moved to Cloud Run
 
-Static Web Apps isn't offered in any region our subscription allows, so the frontend now runs as an nginx container on Cloud Run (`li-frontend`, scales to zero). Why, and what it changes: [ADR 0001](architecture_decision_records/0001-frontend-on-cloud-run.md). Azure now holds only the nightly backups (step 5 of the plan) and the identities that manage them.
+Static Web Apps isn't offered in any region our subscription allows, so the frontend now runs as an nginx container on Cloud Run (`li-frontend`, scales to zero). Why, and what it changes: [ADR 0001](../../architecture_decision_records/0001-frontend-on-cloud-run.md). Azure now holds only the nightly backups (step 5 of the plan) and the identities that manage them.
 
 ### `envs/prod`
 
@@ -104,7 +104,7 @@ Commit `values.env` on `development`, push, and wait for CI to pass.
 
 ### 5. Release: merge `development` into `main`
 
-Before merging, `make release-diff` shows what will ship. After the push, one **Release** run starts. Its `review` and `plan` jobs run first; then it waits for approval in **Actions**. Go through [release-process.md](release-process.md#before-you-approve), then approve once:
+Before merging, `make release-diff` shows what will ship. After the push, one **Release** run starts. Its `review` and `plan` jobs run first; then it waits for approval in **Actions**. Go through [release-process.md](../../release-process.md#before-you-approve), then approve once:
 
 - **Terraform plan:** `envs/prod` is already applied, so the plan should say **no changes**, and the apply step is skipped. This plan job is also the first real test of the CI identities.
 - **The release job:** a backup (migrations `0001`/`0002` are new), the images, the migrations, ingest and search, the load balancer, and the frontend. On this first release the API check only warns, because the Google-managed certificate takes **15–60 minutes**:

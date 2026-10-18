@@ -1,6 +1,6 @@
 # Implementation plan
 
-Living plan for building Lecture Indexer (LI) from the [Milestone 1 proposal](proposal/CS6030_F26_ProjectProposal_LectureIndexer.pdf). Update the status table and decisions as work lands.
+Living plan for building Lecture Indexer (LI) from the [Milestone 1 proposal](../m1_project_proposal/CS6030_F26_ProjectProposal_LectureIndexer.pdf). Update the status table and decisions as work lands.
 
 Last updated: 2026-10-18.
 
@@ -10,7 +10,7 @@ Last updated: 2026-10-18.
 |---|---|---|
 | 1 | Move proposal into `docs/proposal/`, README, scaffold the tree | ✅ done (`c40b2b7`) |
 | 2 | `db/migrations`, `services/` (li_common, ingest, search), Dockerfiles, docker-compose, Makefile | ✅ done (`73ed7d8`): 67 tests pass against Postgres 16 |
-| 3 | Terraform: `infra/terraform/bootstrap`, then `envs/prod` | ✅ written and validated (mocked `terraform test` passes). Bootstrap applied 2026-10-18 (Azure in `northcentralus` after the region policy refused `eastus2`); GitHub variables and the `prod` environment set. `envs/prod` applied 2026-10-18. See [runbook](runbooks/bootstrap.md) |
+| 3 | Terraform: `infra/terraform/bootstrap`, then `envs/prod` | ✅ written and validated (mocked `terraform test` passes). Bootstrap applied 2026-10-18 (Azure in `northcentralus` after the region policy refused `eastus2`); GitHub variables and the `prod` environment set. `envs/prod` applied 2026-10-18. See [runbook](../../runbooks/bootstrap.md) |
 | 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | 🟡 everything written: `ci.yml`, manifests (validated), frontend (tested), deploy workflows (linted, not run yet). Real Google/YouTube test passed 2026-10-18. Next: the first deploy ([first-deployment.md](first-deployment.md)) |
 | 5 | Backup CronJob + Azure storage, monitoring module, security review doc | todo |
 
@@ -24,7 +24,7 @@ Last updated: 2026-10-18.
 
 Per the proposal:
 
-- **Frontend**: React + Vite + TypeScript SPA served by nginx on **Cloud Run** (the proposal said Azure Static Web Apps; see [ADR 0001](architecture_decision_records/0001-frontend-on-cloud-run.md)); Google Sign-In (OAuth 2.0 / OIDC).
+- **Frontend**: React + Vite + TypeScript SPA served by nginx on **Cloud Run** (the proposal said Azure Static Web Apps; see [ADR 0001](../../architecture_decision_records/0001-frontend-on-cloud-run.md)); Google Sign-In (OAuth 2.0 / OIDC).
 - **App tier**: two Flask services on GKE behind Cloud Load Balancing, **Ingest API** and **Search API**, each with its own HPA.
 - **Data**: Cloud SQL for PostgreSQL (private IP), full-text search over timestamped caption segments.
 - **Backups**: nightly K8s CronJob → encrypted `pg_dump` → Azure Blob Storage (immutable, cool tier), write-only credential in Secret Manager.
@@ -68,11 +68,11 @@ Per the proposal:
 | **Only YouTube's auto-generated (ASR) captions**, fetched with `captions.download`; tracks the creator uploaded are ignored, and users never upload caption files to us | One caption source, one format (WebVTT). A video without an ASR track fails with `422 no_captions`. |
 | **Pause between test sessions instead of destroying**: `make cloud-pause` scales the pods to 0, deletes the Ingress (load balancer), and stops Cloud SQL; Terraform ignores `activation_policy` | Idle cost drops to ~$9/month (SQL storage, reserved IP), and the reserved IP, and with it the API hostname, survives. Destroying changes the hostname, which means editing `values.env`, the CSP and the OAuth origins. Ignoring the on/off state stops a CI apply from restarting a paused database. |
 | **Workflows run on `ubuntu-24.04`**, not `ubuntu-latest` | `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; pinning keeps the runner image from changing under CI while the deploy workflows are written. Use the same label in new workflows, and upgrade all of them together on purpose. |
-| **One release workflow per merge to `main`** (`release.yml`; [release process](release-process.md)): review sheet and real Terraform plan before **one** `prod` approval, then apply, backup, migrations, services and frontend in order | The first merge started three deploy workflows with three approvals, no ordering, and the plan only visible after approving. Now the plan comes from a read-only identity in a reviewer-less `prod-plan` environment, and the release applies that exact saved plan. Paused releases stop before asking for approval. |
+| **One release workflow per merge to `main`** (`release.yml`; [release process](../../release-process.md)): review sheet and real Terraform plan before **one** `prod` approval, then apply, backup, migrations, services and frontend in order | The first merge started three deploy workflows with three approvals, no ordering, and the plan only visible after approving. Now the plan comes from a read-only identity in a reviewer-less `prod-plan` environment, and the release applies that exact saved plan. Paused releases stop before asking for approval. |
 | **Tag every release `prod-YYYY-MM-DD.N`** and create a GitHub Release | Base for the next review sheet (`make release-diff`), rollback target, record of what ran when. Every release pushes all three images, so every tag can be rolled back to. |
 | **Automatic rollback where possible; `rollback.yml` for the rest** | Failed rollouts run `kubectl rollout undo`; the frontend gets traffic only after its candidate revision passes a check. `rollback.yml` redeploys a tag's images and config without migrations or Terraform. |
 | **Backup before migrations; expand-then-contract migrations** | Migrations can't be rolled back, so a release with new migrations takes an on-demand Cloud SQL backup first (as `github-terraform`, whose Editor role allows it). Every migration must keep the previous release working, so a code rollback never needs a database rollback. |
-| **Frontend on Cloud Run, not Azure Static Web Apps** ([ADR 0001](architecture_decision_records/0001-frontend-on-cloud-run.md)): nginx image (`frontend/Dockerfile`), service `li-frontend` (public, 0–2 instances), deployed with `gcloud run deploy` | The Azure for Students region policy allows none of the regions Static Web Apps is offered in. Cloud Run is a listed frontend host, scales to zero (~$0), and reuses Docker, Artifact Registry and the `github-deploy` identity, which gets `run.developer` on that one service only. nginx sets the CSP; its `connect-src` follows `VITE_API_BASE` at build time. Terraform ignores the deployed image. |
+| **Frontend on Cloud Run, not Azure Static Web Apps** ([ADR 0001](../../architecture_decision_records/0001-frontend-on-cloud-run.md)): nginx image (`frontend/Dockerfile`), service `li-frontend` (public, 0–2 instances), deployed with `gcloud run deploy` | The Azure for Students region policy allows none of the regions Static Web Apps is offered in. Cloud Run is a listed frontend host, scales to zero (~$0), and reuses Docker, Artifact Registry and the `github-deploy` identity, which gets `run.developer` on that one service only. nginx sets the CSP; its `connect-src` follows `VITE_API_BASE` at build time. Terraform ignores the deployed image. |
 | **Azure resources in `northcentralus`** | The subscription may only deploy to `canadacentral`, `mexicocentral`, `northcentralus`, `francecentral` and `swedencentral`; North Central US is closest to `us-central1`. |
 | **The frontend build reads `API_HOSTNAME` and `GOOGLE_CLIENT_ID` from `values.env`** | One file to fill in after `terraform apply`, for the services and the frontend; no extra GitHub variables. |
 | **Image tags are the commit SHA**, set with `kustomize edit set image` in the deploy job and never committed | Each rollout names exactly what's running. `make cloud-resume` therefore re-applies only the Ingress, not the overlay with its placeholder tags. |
@@ -82,9 +82,9 @@ Per the proposal:
 
 - **YouTube scope.** The proposal says the professor's YouTube token is requested with a read-only scope, but `captions.list` and `captions.download` only accept `youtube.force-ssl`. The token is used for one request and never stored or logged. Correct this in the M3 security review.
 - **Not yet verified:** calls to the real YouTube API and real Google ID tokens (tests mock both); the next step below covers them. `docker build` and the compose stack are verified by the `compose` job in `ci.yml` on the first push.
-- **Infrastructure not applied.** Someone with Owner on both clouds follows [runbooks/bootstrap.md](runbooks/bootstrap.md): state bucket, `bootstrap/`, GitHub variables and the `prod` environment, the OAuth client (console only), then `envs/prod`. It needs `gcloud` and `az`. Provisioning starts billing (roughly $40–60/month while running; see the runbook's cost table), so apply close to when step 4 is ready to deploy. Between test sessions, `make cloud-pause` / `make cloud-resume` cut idle cost to ~$9/month without changing the API hostname; destroy when idle for longer (runbook §7).
-- **Release workflows written but never run.** `release.yml` and `rollback.yml` pass `actionlint` and their scripts are tested with stubs, but they haven't touched a real cloud yet. Before the first release: apply the bootstrap change for `prod-plan` and create that GitHub environment. Expect fixes during the first release ([release process](release-process.md)).
-- **Tooling.** Required tools and install steps for Linux and WSL2 are in [local-development.md](local-development.md); `make doctor` checks them.
+- **Infrastructure not applied.** Someone with Owner on both clouds follows [runbooks/bootstrap.md](../../runbooks/bootstrap.md): state bucket, `bootstrap/`, GitHub variables and the `prod` environment, the OAuth client (console only), then `envs/prod`. It needs `gcloud` and `az`. Provisioning starts billing (roughly $40–60/month while running; see the runbook's cost table), so apply close to when step 4 is ready to deploy. Between test sessions, `make cloud-pause` / `make cloud-resume` cut idle cost to ~$9/month without changing the API hostname; destroy when idle for longer (runbook §7).
+- **Release workflows written but never run.** `release.yml` and `rollback.yml` pass `actionlint` and their scripts are tested with stubs, but they haven't touched a real cloud yet. Before the first release: apply the bootstrap change for `prod-plan` and create that GitHub environment. Expect fixes during the first release ([release process](../../release-process.md)).
+- **Tooling.** Required tools and install steps for Linux and WSL2 are in [local-development.md](../../local-development.md); `make doctor` checks them.
 
 ## Done: step 3, Terraform
 
@@ -140,7 +140,7 @@ The automated tests mock Google sign-in and the YouTube API. This test runs the 
 **You need:**
 - A Google account whose YouTube channel has a video with **auto-generated** captions. YouTube creates them some time after upload. YouTube Studio → Subtitles shows an "English (automatic)" track once they exist. An unlisted video works.
 - Optionally, a second video of yours with only uploaded captions, and the URL of any video you don't own.
-- The local setup from [local-development.md](local-development.md) working (`make dev-up`, `make frontend-dev`).
+- The local setup from [local-development.md](../../local-development.md) working (`make dev-up`, `make frontend-dev`).
 
 ### 1. Google Cloud Console (once)
 
@@ -252,7 +252,7 @@ To finish, run `docker compose -f docker-compose.yml -f docker-compose.google.ym
 
 ## After that: deploy (needs billing)
 
-Infrastructure is applied and `values.env` is filled in. The release runs through `release.yml` ([release process](release-process.md), [first deployment](first-deployment.md)); `terraform.yml` only posts plans on pull requests.
+Infrastructure is applied and `values.env` is filled in. The release runs through `release.yml` ([release process](../../release-process.md), [first deployment](first-deployment.md)); `terraform.yml` only posts plans on pull requests.
 
 **Monitoring inputs (for step 5).** The services already log these events as JSON, ready for log-based metrics:
 
