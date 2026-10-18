@@ -18,8 +18,9 @@ variable "azure_subscription_id" {
 }
 
 variable "azure_location" {
-  type    = string
-  default = "eastus2"
+  description = "Azure for Students only allows canadacentral, mexicocentral, northcentralus, francecentral and swedencentral (policy sys.regionrestriction)."
+  type        = string
+  default     = "northcentralus"
 }
 
 variable "github_repository" {
