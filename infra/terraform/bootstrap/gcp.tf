@@ -25,9 +25,11 @@ locals {
     "roles/servicenetworking.networksAdmin",
   ]
 
-  # Deploy jobs only push images and apply Kubernetes manifests.
+  # Deploy jobs push images and apply Kubernetes manifests; Cloud SQL Viewer
+  # lets them see that the environment is paused (scripts/ci/check-paused.sh).
   deploy_roles = [
     "roles/container.developer",
+    "roles/cloudsql.viewer",
   ]
 
   # PR plans run with -refresh=false, so this is only for reading state and

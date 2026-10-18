@@ -1,6 +1,6 @@
 # Bootstrap and provision the cloud infrastructure
 
-One person does steps 1–5 once. After that, CI runs Terraform (step 4 of the [implementation plan](../implementation-plan.md)). Steps 6–7 apply to anyone who provisions or tears down the production environment.
+One person does steps 1–5 once. After that, CI runs Terraform (step 4 of the [implementation plan](../implementation-plan.md)). Steps 6–7 apply to anyone who provisions or tears down the production environment, and step 8 describes how GitHub Actions deploys.
 
 ## Prerequisites
 
@@ -38,7 +38,7 @@ This creates keyless GitHub Actions access to both clouds. A Workload Identity p
 | Job runs… | GCP service account | Azure identity | Can |
 |---|---|---|---|
 | in the `prod` GitHub environment | `github-terraform` | `id-li-github` (Contributor) | apply Terraform |
-| in the `prod` GitHub environment | `github-deploy` | — | push images, deploy to GKE |
+| in the `prod` GitHub environment | `github-deploy` | — | push images, deploy to GKE, read Cloud SQL's state (the pause check) |
 | on a pull request | `github-plan` (Viewer, read state) | `id-li-github-plan` (Reader) | `terraform plan -refresh=false -lock=false` |
 
 Nothing else, including jobs on branch pushes outside the `prod` environment, can get credentials.
@@ -108,7 +108,7 @@ What it creates:
 
 Check the configuration without credentials: `terraform -chdir=infra/terraform/envs/prod test` runs it against mocked providers.
 
-To rotate the `li_admin` password, increment `db_admin_password_version` in `terraform.tfvars` and apply. Cloud SQL and Secret Manager get the new value together; re-run the migrate Job afterwards.
+To rotate the `li_admin` password, increment the default of `db_admin_password_version` in `variables.tf`, commit, and let the Terraform workflow apply it. Don't set it in `terraform.tfvars`: CI doesn't read that file, so its next apply would see a different version and rotate the password again. Cloud SQL and Secret Manager get the new value together; re-run the services deploy afterwards so the migrate Job runs.
 
 **What Terraform state still holds.** State never contains the database password, but it does contain the Static Web App deploy token (the azurerm provider stores it). Anyone who can read state, including the PR plan identity, could deploy the frontend. Reset the token in the Azure portal if that's ever a concern.
 
@@ -146,7 +146,8 @@ The script is `scripts/cloud-power.sh` (`DRY_RUN=1` prints the commands without 
 Things to know:
 
 - **Terraform doesn't touch the Cloud SQL on/off state** (`ignore_changes` on `activation_policy`), so a `terraform apply`, including CI's, never restarts a paused database. Terraform still creates the instance running.
-- **The Deployments have no `replicas` field**, and an HPA leaves a Deployment at 0 replicas alone. A services deploy while paused therefore rolls out new images without starting pods; run `make cloud-resume` to start them.
+- **Deploys skip while paused** (step 8): they finish green with a warning and change nothing. After `make cloud-resume`, re-run the ones that skipped, e.g. `gh workflow run services-deploy.yml --ref main`.
+- **The Deployments have no `replicas` field**, and an HPA leaves a Deployment at 0 replicas alone, so pods stay at 0 until `make cloud-resume` scales them back.
 - **Resume re-applies only the Ingress** (label `app.kubernetes.io/component=ingress`). Re-applying the whole overlay would reset the image tags to the committed placeholders.
 - The ManagedCertificate stays in the cluster while paused. If the API answers with a certificate error right after a resume, wait for the load balancer to finish provisioning (up to ~30 minutes).
 - A paused Cloud SQL instance can't be backed up, so the nightly backup CronJob (step 5) fails while paused.
@@ -160,8 +161,32 @@ terraform -chdir=infra/terraform/envs/prod destroy   # bootstrap and its state s
 This brings the GCP cost to $0, but:
 
 - **It deletes the database.** Make sure the nightly backup (step 5 of the plan) has run, or the data is disposable.
-- **It releases the IP, which changes the API hostname.** After re-creating, update `values.env`, the CSP `connect-src` and the OAuth client's origins, and rebuild the frontend with the new `VITE_API_BASE`.
+- **It releases the IP, which changes the API hostname.** After re-creating, update `values.env` and the CSP `connect-src`, and push to `main` (both deploys re-run because `values.env` changed). The OAuth client's origins only change if the Static Web App was re-created too.
 
 ### Budget alert
 
 In the GCP console, **Billing → Budgets & alerts**, create a budget for the project (for example $25) with email alerts at 50%, 90% and 100%. A budget only warns; it doesn't stop spending. It catches a forgotten `cloud-resume`.
+
+## 8. Deploy from GitHub Actions
+
+Three workflows deploy from `main`. Each runs in the `prod` environment, so each waits for an approval, and each first waits for CI to pass on the same commit (`wait-for-ci.yml`). They also run by hand: **Actions → Run workflow**, or `gh workflow run <file> --ref main`.
+
+| Workflow | Runs on a push to `main` that touches | Does | While paused |
+|---|---|---|---|
+| `terraform.yml` | `infra/terraform/` | plan, then apply `envs/prod` as `github-terraform` / `id-li-github`. On PRs: a read-only plan as a PR comment | skips: refreshing the database users needs a running instance |
+| `services-deploy.yml` | `services/`, `db/`, `deploy/k8s/` | build and push both images (tagged with the commit SHA), run the migrate Job, apply the app overlay, wait for the rollouts | skips: migrations need the database, and applying the overlay would re-create the load balancer |
+| `frontend-deploy.yml` | `frontend/`, `values.env` | build with `VITE_API_BASE` and `VITE_GOOGLE_CLIENT_ID` taken from `values.env`, upload to the Static Web App | runs: costs nothing; the site shows API errors until resumed |
+
+The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused when Cloud SQL isn't `ALWAYS`/`RUNNABLE`, or (services only) when the namespace exists but the Ingress doesn't. A skipped run ends green with a warning and a summary saying what to re-run. Before the first apply and the first deploy, nothing counts as paused.
+
+The approval comes before the plan is visible. Read the PR's plan comment, or what changed on `main`, before approving an apply.
+
+### First deploy
+
+1. Steps 1–6 done: bootstrap applied, GitHub variables and the `prod` environment set, `envs/prod` applied (by hand, or by running `terraform.yml`).
+2. Fill `deploy/k8s/overlays/prod/values/values.env` from `terraform output` (each line names its output), plus `GOOGLE_CLIENT_ID` and `PROFESSOR_EMAILS`. The services and frontend deploys refuse to run while it still has placeholders.
+3. Narrow `connect-src` in `frontend/staticwebapp.config.json` from `https://*.sslip.io` to `https://<api_hostname>`.
+4. Push to `main` and approve the services and frontend deploys. The Google-managed certificate takes 15–60 minutes to become active after the first rollout.
+5. Add the `frontend_url` output as an authorized JavaScript origin on the OAuth client (step 5), if it isn't there yet.
+
+A push that touches both `infra/terraform/` and the services starts both workflows at once; nothing orders them. If the services deploy needs the infrastructure change, approve the Terraform run first and re-run the services deploy after it finishes.

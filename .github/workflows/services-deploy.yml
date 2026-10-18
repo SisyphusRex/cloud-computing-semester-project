@@ -1,0 +1,135 @@
+name: Deploy services
+
+# Builds both images, runs the migrate Job, then rolls out ingest and search.
+# Runs on pushes to main that touch the services, migrations or manifests, and
+# by hand (Actions → Run workflow, or gh workflow run services-deploy.yml --ref main).
+# Skips without changing anything while the environment is paused (make cloud-pause).
+on:
+  push:
+    branches: [main]
+    paths:
+      - services/**
+      - db/**
+      - deploy/k8s/**
+      - scripts/ci/check-paused.sh
+      - .github/workflows/services-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KUSTOMIZE_VERSION: "v5.8.3"
+  NAMESPACE: li
+
+jobs:
+  ci:
+    uses: ./.github/workflows/wait-for-ci.yml
+    permissions:
+      actions: read
+
+  deploy:
+    name: Build, migrate, roll out
+    needs: ci
+    runs-on: ubuntu-24.04
+    environment: prod
+    # One deploy at a time; a newer push waits instead of cancelling a rollout.
+    concurrency:
+      group: deploy-services
+      cancel-in-progress: false
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      REPO: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/li
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Production values are filled in
+        run: |
+          if grep -nE 'REPLACE_ME|PROJECT_ID|0-0-0-0' deploy/k8s/overlays/prod/values/values.env; then
+            echo "::error::Fill in deploy/k8s/overlays/prod/values/values.env from terraform output first"
+            exit 1
+          fi
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          install_components: kubectl,gke-gcloud-auth-plugin
+
+      - name: Connect to the cluster
+        run: gcloud container clusters get-credentials li --region "${{ vars.GCP_REGION }}"
+
+      - name: Check whether the environment is paused
+        id: paused
+        run: scripts/ci/check-paused.sh sql+k8s
+
+      - name: Build and push images
+        if: steps.paused.outputs.paused == 'false'
+        run: |
+          gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+          for svc in ingest search; do
+            docker build -f "services/$svc/Dockerfile" -t "$REPO/$svc:$TAG" .
+            docker push "$REPO/$svc:$TAG"
+          done
+
+      - name: Install kustomize
+        if: steps.paused.outputs.paused == 'false'
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP/bin" kustomize
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Set image tags
+        if: steps.paused.outputs.paused == 'false'
+        run: |
+          (cd deploy/k8s/overlays/prod && kustomize edit set image "ingest=$REPO/ingest:$TAG" "search=$REPO/search:$TAG")
+          (cd deploy/k8s/overlays/prod/migrate && kustomize edit set image "ingest=$REPO/ingest:$TAG")
+
+      # The migrate overlay doesn't include the Namespace.
+      - name: Create the namespace
+        if: steps.paused.outputs.paused == 'false'
+        run: kubectl apply -f deploy/k8s/base/namespace.yaml
+
+      - name: Run migrations
+        if: steps.paused.outputs.paused == 'false'
+        run: |
+          # A Job's pod template can't be changed, so replace the previous run.
+          kubectl -n "$NAMESPACE" delete job migrate --ignore-not-found --wait
+          kustomize build deploy/k8s/overlays/prod/migrate | kubectl apply -f -
+          # The Job gives up after 600 s (activeDeadlineSeconds).
+          for _ in $(seq 132); do
+            status=$(kubectl -n "$NAMESPACE" get job migrate \
+              -o jsonpath='{.status.conditions[?(@.status=="True")].type}')
+            case $status in
+              *Complete*) break ;;
+              *Failed*) break ;;
+            esac
+            sleep 5
+          done
+          kubectl -n "$NAMESPACE" logs job/migrate -c migrate --tail=100 || true
+          if [[ $status != *Complete* ]]; then
+            kubectl -n "$NAMESPACE" describe job migrate
+            echo "::error::Migrations did not complete (${status:-timed out})"
+            exit 1
+          fi
+
+      - name: Roll out ingest and search
+        if: steps.paused.outputs.paused == 'false'
+        run: |
+          kustomize build deploy/k8s/overlays/prod | kubectl apply -f -
+          for d in ingest search; do
+            kubectl -n "$NAMESPACE" rollout status "deploy/$d" --timeout=5m
+          done
+          {
+            echo "### Deployed \`${TAG:0:7}\`"
+            echo "- \`$REPO/ingest:$TAG\`"
+            echo "- \`$REPO/search:$TAG\`"
+          } >> "$GITHUB_STEP_SUMMARY"

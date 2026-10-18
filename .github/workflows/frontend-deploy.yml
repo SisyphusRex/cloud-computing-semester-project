@@ -1,0 +1,103 @@
+name: Deploy frontend
+
+# Builds the SPA and uploads it to the Static Web App. Runs on pushes to main
+# that touch the frontend or the production values, and by hand
+# (gh workflow run frontend-deploy.yml --ref main). No pause check: Static Web
+# Apps Free costs nothing, and a paused API only means the site shows errors.
+on:
+  push:
+    branches: [main]
+    paths:
+      - frontend/**
+      - deploy/k8s/overlays/prod/values/values.env
+      - .github/workflows/frontend-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Names fixed by infra/terraform/envs/prod/azure.tf.
+  SWA_NAME: swa-li-prod
+  SWA_RESOURCE_GROUP: rg-li-prod
+  VALUES: deploy/k8s/overlays/prod/values/values.env
+
+jobs:
+  ci:
+    uses: ./.github/workflows/wait-for-ci.yml
+    permissions:
+      actions: read
+
+  deploy:
+    name: Build and upload
+    needs: ci
+    runs-on: ubuntu-24.04
+    environment: prod
+    concurrency:
+      group: deploy-frontend
+      cancel-in-progress: false
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # The API hostname and OAuth client ID come from the same file the
+      # services read, so filling it in after terraform apply covers both.
+      - name: Read production values
+        run: |
+          value() { sed -n "s/^$1=//p" "$VALUES"; }
+          host=$(value API_HOSTNAME)
+          client=$(value GOOGLE_CLIENT_ID)
+          if [[ -z $host || -z $client || $host == 0-0-0-0.sslip.io || $client == REPLACE_ME* ]]; then
+            echo "::error::Fill in API_HOSTNAME and GOOGLE_CLIENT_ID in $VALUES first"
+            exit 1
+          fi
+          {
+            echo "VITE_API_BASE=https://$host"
+            echo "VITE_GOOGLE_CLIENT_ID=$client"
+            echo "VITE_DEV_AUTH=0"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          # Static Web Apps reads its routes and headers from the uploaded folder.
+          cp staticwebapp.config.json dist/
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get the deploy token
+        id: token
+        run: |
+          token=$(az staticwebapp secrets list --name "$SWA_NAME" --resource-group "$SWA_RESOURCE_GROUP" \
+            --query properties.apiKey -o tsv)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          action: upload
+          azure_static_web_apps_api_token: ${{ steps.token.outputs.token }}
+          app_location: frontend/dist
+          skip_app_build: true
+          skip_api_build: true
+
+      - name: Summary
+        run: |
+          url=$(az staticwebapp show --name "$SWA_NAME" --resource-group "$SWA_RESOURCE_GROUP" \
+            --query defaultHostname -o tsv)
+          echo "### Deployed \`${GITHUB_SHA:0:7}\` to https://$url (API: $VITE_API_BASE)" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,38 @@
+name: Wait for CI
+
+# Called by the deploy workflows before their prod job, so a deploy only asks
+# for approval once CI has passed on the same commit.
+on:
+  workflow_call:
+
+permissions:
+  actions: read
+
+jobs:
+  ci:
+    name: CI passed on this commit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SHA: ${{ github.sha }}
+    steps:
+      - name: Wait for the CI run
+        run: |
+          # The push starts CI and the deploy at the same moment; give CI's run
+          # a minute to appear.
+          for _ in $(seq 12); do
+            run=$(gh run list --workflow ci.yml --commit "$SHA" --limit 1 --json databaseId -q '.[0].databaseId')
+            [ -n "$run" ] && break
+            sleep 5
+          done
+          if [ -z "$run" ]; then
+            echo "::error::No CI run found for $SHA"
+            exit 1
+          fi
+          gh run watch "$run" --exit-status --interval 15 > /dev/null || {
+            echo "::error::CI failed on $SHA: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$run"
+            exit 1
+          }
+          echo "CI passed: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$run"
