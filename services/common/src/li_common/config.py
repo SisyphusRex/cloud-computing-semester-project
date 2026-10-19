@@ -25,8 +25,6 @@ class Settings:
     database_url: str
     google_client_id: str
     cors_origins: list[str] = field(default_factory=list)
-    # Signing in with one of these emails grants the professor role.
-    professor_emails: frozenset[str] = frozenset()
     # Accept "dev:<email>" bearer tokens instead of Google ID tokens. Local only.
     dev_auth: bool = False
     db_pool_size: int = 4
@@ -37,7 +35,6 @@ class Settings:
             database_url=env("DATABASE_URL", "postgresql:///li"),
             google_client_id=env("GOOGLE_CLIENT_ID"),
             cors_origins=_split(env("CORS_ORIGINS")),
-            professor_emails=frozenset(e.lower() for e in _split(env("PROFESSOR_EMAILS"))),
             dev_auth=env("LI_DEV_AUTH") == "1",
             db_pool_size=int(env("DB_POOL_SIZE", "4")),
         )

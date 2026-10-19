@@ -21,7 +21,15 @@ make dev-up      # full stack: ingest on :8081, search on :8082
 
 Database tests use `DATABASE_URL` and create a throwaway schema per test, so any Postgres 16 you can create schemas in works.
 
-Locally, `LI_DEV_AUTH=1` accepts `Authorization: Bearer dev:<email>` instead of a Google ID token. Emails in `PROFESSOR_EMAILS` get the professor role. The services refuse to start with dev auth inside Kubernetes.
+Locally, `LI_DEV_AUTH=1` accepts `Authorization: Bearer dev:<email>` instead of a Google ID token. The services refuse to start with dev auth inside Kubernetes.
+
+### Users and roles
+
+Sign-in is invite-only and roles live in the `users` table ([ADR 0002](../docs/architecture_decision_records/0002-invite-only-users-and-admin-roles.md)). An invitation is a row with no `google_sub` yet; the first sign-in with a matching verified email claims it. Anyone else gets `403 not_invited`, and a disabled account `403 account_disabled`. The row is read on every request, so role changes apply immediately.
+
+- `role` is `student` or `professor`. `is_admin` lets a user invite people and change students' and professors' roles; `is_superuser` also lets them grant admin.
+- Superusers are made only with the CLI, `li-admin create-superuser EMAIL` (`make cloud-create-superuser EMAIL=...` in prod). `li-admin add-user EMAIL --role professor [--admin]` and `li-admin list` work the same way. docker compose seeds `prof@example.edu` (professor, superuser) and `student@example.edu`.
+- Every change writes a `user_audit` row (actor, target, action, before/after).
 
 ## Configuration
 
@@ -29,7 +37,6 @@ Locally, `LI_DEV_AUTH=1` accepts `Authorization: Bearer dev:<email>` instead of 
 |---|---|
 | `DATABASE_URL` | In GKE this points at the Cloud SQL Auth Proxy sidecar (`127.0.0.1`) with IAM login |
 | `GOOGLE_CLIENT_ID` | OAuth web client ID; the ID token's audience must match |
-| `PROFESSOR_EMAILS` | Comma-separated; signing in with one grants the professor role |
 | `CORS_ORIGINS` | Comma-separated frontend origins (the Cloud Run frontend URL) |
 | `LI_DEV_AUTH` | `1` enables dev tokens; local only |
 | `DB_POOL_SIZE` | Connections per gunicorn worker (default 4, matching `--threads 4`) |
@@ -39,7 +46,19 @@ Any variable can instead be given as `NAME_FILE`, a path to a file holding the v
 
 ## API
 
-Every endpoint except the health checks needs `Authorization: Bearer <Google ID token>`. Errors are JSON: `{"error": "<code>", "message": "...", ...}`.
+Every endpoint except the health checks needs `Authorization: Bearer <Google ID token>` for an invited, active account. Errors are JSON: `{"error": "<code>", "message": "...", ...}`.
+
+### Ingest: account and admin
+
+| Method | Path | Who | Body | Result |
+|---|---|---|---|---|
+| `GET` | `/ingest/me` | anyone signed in | | `id`, `email`, `name`, `role`, `is_admin`, `is_superuser` |
+| `GET` | `/ingest/admin/users` | admin | | all users, each with `status`: `invited`, `active` or `disabled` |
+| `POST` | `/ingest/admin/users` | admin | `{"emails": [...], "role": "student"}` | `201` `{"created": [users], "already_exists": [emails]}` |
+| `PATCH` | `/ingest/admin/users/{id}` | admin | any of `role`, `is_active`; `is_admin` (superuser only) | the updated user |
+| `DELETE` | `/ingest/admin/users/{id}` | admin | | `204`; only for invitations nobody has claimed (`409` otherwise: disable instead) |
+
+Nobody can change their own account; only superusers can change admins; superusers can't be changed through the API at all.
 
 ### Ingest (professor role)
 

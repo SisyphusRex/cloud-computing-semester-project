@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 li-migrate = "li_common.migrate:main"
+li-admin = "li_common.admin:main"
 
 [build-system]
 requires = ["hatchling"]

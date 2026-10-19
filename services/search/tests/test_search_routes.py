@@ -47,7 +47,8 @@ def seeded(database_url):
 
 
 @pytest.fixture
-def client(make_client, db_settings, seeded):
+def client(make_client, db_settings, invite, seeded):
+    invite(STUDENT)
     return make_client(search.create_app, db_settings)
 
 

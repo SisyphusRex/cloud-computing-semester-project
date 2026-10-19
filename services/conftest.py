@@ -13,12 +13,13 @@ from pathlib import Path
 import psycopg
 import pytest
 from psycopg.conninfo import make_conninfo
+from psycopg.rows import dict_row
 
+from li_common.admin import add_user
 from li_common.config import Settings
 from li_common.migrate import apply
 
 MIGRATIONS = Path(__file__).resolve().parent.parent / "db" / "migrations"
-PROFESSOR = "prof@example.edu"  # in professor_emails; tests use these literals
 
 
 @pytest.fixture
@@ -27,7 +28,6 @@ def settings() -> Settings:
     return Settings(
         database_url="postgresql://127.0.0.1:1/unreachable?connect_timeout=1",
         google_client_id="test-client-id",
-        professor_emails=frozenset({PROFESSOR}),
         dev_auth=True,
     )
 
@@ -45,6 +45,18 @@ def database_url():
     yield url
     with psycopg.connect(base, autocommit=True) as conn:
         conn.execute(f'DROP SCHEMA "{schema}" CASCADE')
+
+
+@pytest.fixture
+def invite(database_url):
+    """`invite(email, role, admin=, superuser=)` -> the user row. Sign-in is
+    invite-only, so tests invite each account before using it."""
+
+    def _invite(email, role="student", *, admin=False, superuser=False):
+        with psycopg.connect(database_url, row_factory=dict_row) as conn:
+            return add_user(conn, email, role, admin=admin, superuser=superuser)
+
+    return _invite
 
 
 @pytest.fixture

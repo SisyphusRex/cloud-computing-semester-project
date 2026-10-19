@@ -38,8 +38,10 @@ class FakeYouTube:
 
 
 @pytest.fixture
-def client(make_client, db_settings, monkeypatch):
+def client(make_client, db_settings, invite, monkeypatch):
     monkeypatch.setattr(youtube, "YouTubeClient", FakeYouTube)
+    invite(PROF, "professor")
+    invite("student@example.edu")
     return make_client(ingest.create_app, db_settings)
 
 
@@ -105,13 +107,8 @@ def test_validation_and_missing_youtube_token(client, auth, course_id):
     assert register(client, auth, course_id, token="").status_code == 400
 
 
-def test_other_professors_course_is_404(client, auth, db_settings, course_id):
-    import dataclasses
-
-    db_settings = dataclasses.replace(
-        db_settings, professor_emails=db_settings.professor_emails | {"other@example.edu"}
-    )
-    client.application.config["LI_SETTINGS"] = db_settings
+def test_other_professors_course_is_404(client, auth, invite, course_id):
+    invite("other@example.edu", "professor")
     assert register(client, auth, course_id, email="other@example.edu").status_code == 404
 
 

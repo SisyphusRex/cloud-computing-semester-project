@@ -7,14 +7,12 @@ def test_from_env_reads_values_and_files(monkeypatch, tmp_path):
     secret = tmp_path / "client-id"
     secret.write_text("abc.apps.googleusercontent.com\n")
     monkeypatch.setenv("GOOGLE_CLIENT_ID_FILE", str(secret))
-    monkeypatch.setenv("PROFESSOR_EMAILS", "Prof@Example.edu, other@example.edu")
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173")
     monkeypatch.delenv("KUBERNETES_SERVICE_HOST", raising=False)
 
     settings = Settings.from_env()
 
     assert settings.google_client_id == "abc.apps.googleusercontent.com"
-    assert settings.professor_emails == {"prof@example.edu", "other@example.edu"}
     assert settings.cors_origins == ["http://localhost:5173"]
     assert not settings.dev_auth
 
