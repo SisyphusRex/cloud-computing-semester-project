@@ -69,3 +69,17 @@ Also worth including:
 - **AI usage:** the session logs in [`ai_usage/`](ai_usage/).
 
 Before writing it, check the course page for a required format or length, and take screenshots while the environment is running (resume it with `make cloud-resume`).
+
+## Optional
+
+Ideas worth considering. Nothing depends on them; pick one up only if it's worth the time.
+
+### Keep the sign-in across page refreshes
+
+**Today:** the session (the Google ID token, or the dev token) lives only in React state ([`AuthContext.tsx`](../frontend/src/auth/AuthContext.tsx)). Refreshing the page signs you out. In production that means another Google sign-in after every reload; when testing locally, it means typing the account again. This was deliberate: a token in browser storage can be read by any script that gets onto the page.
+
+**Option:** keep the session in `sessionStorage`, restore it on load, and clear it on sign-out and when the token expires (the existing timer). `sessionStorage` is limited to one tab and cleared when the tab closes, unlike `localStorage`.
+
+- **Risk:** an injected script could read the ID token and use it against the APIs until it expires (about an hour). The nginx Content-Security-Policy (`script-src 'self'` plus Google's sign-in script, in [`security-headers.conf`](../frontend/nginx/security-headers.conf)) makes that unlikely, but it's still more exposure than memory.
+- **Don't persist the YouTube access token.** It can manage the professor's channel; keep it in memory as now.
+- If done, add a vitest case (restored on load, cleared on sign-out and on expiry), and note the trade-off in the M3 security review.
