@@ -90,6 +90,20 @@ Keep the teammates' email addresses **out of this repository** (it's public; see
 
 Afterwards, have each teammate confirm with `make cloud-status` and a sign-in to the app. Record who has which access somewhere outside the repo, so it can be revoked at the end of the semester.
 
+## Revoke superusers with `li-admin`
+
+**Today:** `li-admin create-superuser` is the only way to grant superuser, and the app deliberately can't change superusers ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md)). Nothing removes the flag except a hand-written SQL `UPDATE` as `li_admin` ([database access guide](security/database-access.md)). That writes no `user_audit` row, so the change leaves no record.
+
+**Goal:** `li-admin revoke-superuser EMAIL [--keep-admin]` in [`admin.py`](../services/common/src/li_common/admin.py):
+- It clears `is_superuser`, and also `is_admin` unless `--keep-admin` is given. The database check (superuser implies admin) allows either.
+- It goes through `users.update(..., actor_id=None)`, so the change is audited like the other CLI commands.
+- It refuses to remove the **last** superuser, since nobody could grant admin after that. `--force` overrides this.
+- It's safe to re-run, and errors clearly on an unknown email.
+- In prod: `make cloud-admin ARGS="revoke-superuser EMAIL"`. `scripts/cloud-admin.sh` passes the arguments through, so no new script is needed.
+- Tests in `services/common/tests/test_admin_cli.py`: revoke, `--keep-admin`, the last-superuser guard, and the audit row.
+- Docs: the `li-admin` list in `services/README.md`, and the database access guide, which should point to this command instead of SQL.
+- Optionally, also `remove-admin` and `disable`, so the CLI can undo everything it can grant.
+
 ## Optional
 
 Ideas worth considering. Nothing depends on them; pick one up only if it's worth the time.
