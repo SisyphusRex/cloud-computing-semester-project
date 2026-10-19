@@ -138,7 +138,7 @@ make frontend-dev                              # leave running; Ctrl-C to stop
 Open **http://localhost:5173**:
 - **`prof@example.edu`** sees the **Manage** page (create courses, register and remove lectures) and the **Admin** page (invite users, change roles, grant admin).
 - **`student@example.edu`**: browse courses and search them.
-- **Any other email** is refused until `prof@example.edu` invites it on the Admin page, or you run `docker compose run --rm seed li-admin add-user EMAIL --role professor`.
+- **Any other email** is refused until `prof@example.edu` invites it on the Admin page, or you run `docker compose run --rm --entrypoint li-admin seed add-user EMAIL --role professor`.
 
 **Registering a lecture fails in dev mode**, with a YouTube token error. The Ingest API really calls YouTube with your Google token, so it needs real Google sign-in and your own video with YouTube auto-generated captions. That's described in the implementation plan, [Next: real Google/YouTube test](milestones/m2_prototype_review/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying).
 
@@ -164,6 +164,50 @@ make test-db         # all Python tests, against the compose Postgres
 make frontend-test   # ESLint, vitest, production build
 make frontend-image  # the production nginx image (Docker; DOCKER="sudo docker" if needed)
 ```
+
+**Use `make test-db`, not `make test`.** Tests marked `db` need a Postgres at `DATABASE_URL`. Plain `make test` doesn't set it, so it **skips** them and still passes. Those skipped tests include every API route test and every auth test. `make test-db` starts the compose Postgres and sets `DATABASE_URL` for you. Each test creates and drops its own schema, so your dev data is untouched.
+
+### Run one test file or one test
+
+While working on one area, run just its tests. The compose Postgres must be up: `make test-db` starts it, or run `docker compose up -d --wait db` (with `sudo` if needed).
+
+```sh
+cd services
+export DATABASE_URL=postgresql://li:li@localhost:55432/li   # once per terminal
+
+uv run pytest ingest/tests/test_admin_routes.py                 # one file
+uv run pytest ingest/tests/test_admin_routes.py::test_only_superusers_grant_admin   # one test
+uv run pytest -k invite                                          # tests whose name contains "invite"
+uv run pytest -x --lf                                            # rerun only last run's failures, stop at the first
+```
+
+Paths are relative to `services/`. Add `-v` to list every test, or `-s` to see `print` output.
+
+Frontend tests don't need a database:
+
+```sh
+cd frontend
+npx vitest run src/pages/AdminPage.test.tsx     # one file
+npx vitest run -t "grant admin"                 # tests whose name matches
+npx vitest                                      # watch mode: reruns on save
+```
+
+### Check sign-in and roles by hand
+
+The automated tests cover the rules. Before merging a change to sign-in, roles or the Admin page, also click through it once ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) describes the model). Start the stack and the frontend ([Run the app](#run-the-app)), open http://localhost:5173, and sign in as each account in turn. To switch accounts, use **Sign out**.
+
+| Sign in as | Do | Expect |
+|---|---|---|
+| `x@example.edu` (under "Other email") | Just sign in | "You haven't been invited yet" |
+| `prof@example.edu` | Look at the nav | **Courses**, **Manage** and **Admin** |
+| `prof@example.edu` | On **Admin**, invite `new@example.edu` as Professor | "Invited 1."; the row shows `invited` |
+| `new@example.edu` | Sign in, open **Manage** | You can create a course |
+| `prof@example.edu` | On **Admin**, set `new@example.edu` to Student, and tick its *Admin* box | Its row now shows `active` (the invitation was claimed); both changes save |
+| `new@example.edu` | Open **Manage**, then **Admin** | "Only professors can manage courses"; **Admin** works, but the *Admin* boxes are disabled (only superusers grant admin) |
+| `prof@example.edu` | **Disable** `student@example.edu` | The row shows `disabled` |
+| `student@example.edu` | Sign in | "Account disabled". Afterwards, sign back in as `prof@example.edu` and **Enable** it again |
+
+Role changes apply on the next request, so you don't need to wait for anything. To undo everything, run `make dev-reset`. That also deletes your local courses. Afterwards, `make dev-up` invites the two default accounts again.
 
 Optional, if you have the tools: `make k8s-check` (needs `kustomize` and `kubeconform` on `PATH`), and `terraform -chdir=infra/terraform/envs/prod test` (Terraform 1.16.4; [tfenv](https://github.com/tfutils/tfenv) picks it from `infra/terraform/.terraform-version`).
 
