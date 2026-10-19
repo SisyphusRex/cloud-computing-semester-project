@@ -113,6 +113,7 @@ function UserTable({ users, me, onChange }: { users: AdminUser[]; me: Me; onChan
             <th>Status</th>
             <th>Role</th>
             <th>Admin</th>
+            <th title="Superusers are also admins, and can grant admin. Set only with li-admin.">Superuser</th>
             <th>
               <span className="visually-hidden">Actions</span>
             </th>
@@ -140,16 +141,25 @@ function UserTable({ users, me, onChange }: { users: AdminUser[]; me: Me; onChan
                   </select>
                 </td>
                 <td>
+                  {/* A superuser is always an admin, so their box stays ticked and locked. */}
+                  <input
+                    type="checkbox"
+                    aria-label={`Admin: ${user.email}`}
+                    checked={user.is_admin}
+                    disabled={!editable || !me.is_superuser}
+                    onChange={(e) => update(user, { is_admin: e.target.checked })}
+                  />
+                </td>
+                <td>
+                  {/* Read-only: only li-admin makes superusers (ADR 0002). */}
                   {user.is_superuser ? (
-                    "superuser"
+                    <span role="img" aria-label={`Superuser: ${user.email}`} title="Superuser (set with li-admin)">
+                      ✓
+                    </span>
                   ) : (
-                    <input
-                      type="checkbox"
-                      aria-label={`Admin: ${user.email}`}
-                      checked={user.is_admin}
-                      disabled={!editable || !me.is_superuser}
-                      onChange={(e) => update(user, { is_admin: e.target.checked })}
-                    />
+                    <span className="muted" aria-hidden="true">
+                      —
+                    </span>
                   )}
                 </td>
                 <td>

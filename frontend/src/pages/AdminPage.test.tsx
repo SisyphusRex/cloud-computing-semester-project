@@ -86,6 +86,19 @@ describe("<AdminPage>", () => {
     expect(updateUser).toHaveBeenCalledWith(4, { is_active: false });
   });
 
+  it("shows admin and superuser as separate columns", async () => {
+    setup();
+
+    const rootAdmin = await screen.findByLabelText("Admin: root@example.edu");
+    expect(rootAdmin).toBeChecked();
+    expect(rootAdmin).toBeDisabled();
+    expect(screen.getByRole("img", { name: "Superuser: root@example.edu" })).toBeInTheDocument();
+
+    expect(screen.getByLabelText("Admin: other-admin@example.edu")).toBeChecked();
+    expect(screen.queryByRole("img", { name: "Superuser: other-admin@example.edu" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Admin: student@example.edu")).not.toBeChecked();
+  });
+
   it("lets a superuser grant admin", async () => {
     const updateUser = vi.fn(() => Promise.resolve(USERS[3]));
     setup({ ...USERS[1] }, { updateUser });
