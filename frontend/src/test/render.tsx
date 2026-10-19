@@ -5,6 +5,7 @@ import { vi } from "vitest";
 import { ApiContext } from "../api/ApiContext";
 import type { Role } from "../api/ApiContext";
 import type { Api } from "../api/client";
+import type { Me } from "../api/types";
 import { AuthContext } from "../auth/AuthContext";
 import type { AuthValue } from "../auth/AuthContext";
 import { devSession } from "../auth/session";
@@ -21,6 +22,11 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
     registerLecture: missing("registerLecture"),
     getLecture: missing("getLecture"),
     deleteLecture: missing("deleteLecture"),
+    me: missing("me"),
+    listUsers: missing("listUsers"),
+    inviteUsers: missing("inviteUsers"),
+    updateUser: missing("updateUser"),
+    deleteInvitation: missing("deleteInvitation"),
   };
   return { ...api, ...overrides } as Api;
 }
@@ -28,13 +34,15 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
 interface Options {
   api: Api;
   role?: Role;
+  /** Defaults to a user with `role` and no admin flags. */
+  me?: Partial<Me>;
   auth?: Partial<AuthValue>;
   path: string;
   url: string;
 }
 
 /** Render `element` at route `path`, starting at `url`, with fake providers. */
-export function renderPage(element: ReactNode, { api, role = "student", auth, path, url }: Options) {
+export function renderPage(element: ReactNode, { api, role = "student", me, auth, path, url }: Options) {
   const authValue: AuthValue = {
     session: devSession("someone@example.edu"),
     signIn: vi.fn(),
@@ -44,7 +52,7 @@ export function renderPage(element: ReactNode, { api, role = "student", auth, pa
   };
   return render(
     <AuthContext.Provider value={authValue}>
-      <ApiContext.Provider value={{ api, role }}>
+      <ApiContext.Provider value={{ api, role, me: fakeMe(role, me), accessError: null }}>
         <MemoryRouter initialEntries={[url]}>
           <Routes>
             <Route path={path} element={element} />
@@ -53,4 +61,17 @@ export function renderPage(element: ReactNode, { api, role = "student", auth, pa
       </ApiContext.Provider>
     </AuthContext.Provider>,
   );
+}
+
+function fakeMe(role: Role, overrides: Partial<Me> = {}): Me | null {
+  if (!role) return null;
+  return {
+    id: 1,
+    email: "someone@example.edu",
+    name: "Someone",
+    role,
+    is_admin: false,
+    is_superuser: false,
+    ...overrides,
+  };
 }

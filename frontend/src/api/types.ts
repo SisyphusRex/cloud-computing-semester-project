@@ -51,3 +51,33 @@ export interface SearchResponse {
   query: string;
   hits: SearchHit[];
 }
+
+export type UserRole = "student" | "professor";
+
+/** GET /ingest/me: the signed-in user (ADR 0002). */
+export interface Me {
+  id: number;
+  email: string;
+  name: string | null;
+  role: UserRole;
+  is_admin: boolean;
+  is_superuser: boolean;
+}
+
+/** A row on the admin page; "invited" means they haven't signed in yet. */
+export interface AdminUser extends Me {
+  is_active: boolean;
+  status: "invited" | "active" | "disabled";
+  created_at: string;
+}
+
+export interface InviteResult {
+  created: AdminUser[];
+  already_exists: string[];
+}
+
+export interface UserChanges {
+  role?: UserRole;
+  is_active?: boolean;
+  is_admin?: boolean;
+}

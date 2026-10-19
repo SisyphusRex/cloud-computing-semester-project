@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 
 export function Layout() {
   const { session, signOut } = useAuth();
-  const { role } = useApi();
+  const { role, me } = useApi();
   return (
     <>
       <header className="topbar">
@@ -16,6 +16,7 @@ export function Layout() {
             Courses
           </NavLink>
           {role === "professor" && <NavLink to="/manage">Manage</NavLink>}
+          {me?.is_admin && <NavLink to="/admin">Admin</NavLink>}
         </nav>
         <div className="user">
           <span title={session?.email}>{session?.name ?? session?.email}</span>

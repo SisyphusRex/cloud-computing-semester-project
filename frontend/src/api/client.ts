@@ -1,9 +1,14 @@
 import type {
+  AdminUser,
   Course,
   IndexedLecture,
   IngestLecture,
+  InviteResult,
+  Me,
   MyCourse,
   SearchResponse,
+  UserChanges,
+  UserRole,
 } from "./types";
 
 /** An error response from the APIs ({"error", "message", ...}) or a network failure. */
@@ -81,6 +86,9 @@ export function createApi({ base, getToken, onUnauthorized }: ClientOptions) {
         `/search/courses/${courseId}/segments?${new URLSearchParams({ q, limit: String(limit) })}`,
       ),
 
+    // Ingest API. Any signed-in user; 403 not_invited / account_disabled if they can't sign in.
+    me: () => request<Me>("/ingest/me"),
+
     // Ingest API: professors only (403 for students).
     myCourses: () => request<{ courses: MyCourse[] }>("/ingest/courses").then((r) => r.courses),
     createCourse: (code: string, title: string) =>
@@ -94,6 +102,15 @@ export function createApi({ base, getToken, onUnauthorized }: ClientOptions) {
     getLecture: (lectureId: number) => request<IngestLecture>(`/ingest/lectures/${lectureId}`),
     deleteLecture: (lectureId: number) =>
       request<void>(`/ingest/lectures/${lectureId}`, { method: "DELETE" }),
+
+    // Ingest API: admins only.
+    listUsers: () => request<{ users: AdminUser[] }>("/ingest/admin/users").then((r) => r.users),
+    inviteUsers: (emails: string[], role: UserRole) =>
+      request<InviteResult>("/ingest/admin/users", { method: "POST", body: { emails, role } }),
+    updateUser: (userId: number, changes: UserChanges) =>
+      request<AdminUser>(`/ingest/admin/users/${userId}`, { method: "PATCH", body: changes }),
+    deleteInvitation: (userId: number) =>
+      request<void>(`/ingest/admin/users/${userId}`, { method: "DELETE" }),
   };
 }
 
