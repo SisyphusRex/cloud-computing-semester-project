@@ -104,6 +104,32 @@ Afterwards, have each teammate confirm with `make cloud-status` and a sign-in to
 - Docs: the `li-admin` list in `services/README.md`, and the database access guide, which should point to this command instead of SQL.
 - Optionally, also `remove-admin` and `disable`, so the CLI can undo everything it can grant.
 
+## Let superusers change their own role
+
+**Today:** on the Admin page, nobody can change their own account, and nobody can change a superuser's account at all ([`admin.py`](../services/ingest/src/ingest/admin.py) `update_user`, mirrored by `canEdit` in [`AdminPage.tsx`](../frontend/src/pages/AdminPage.tsx)). A superuser who wants to switch between student and professor has to run `make cloud-admin ARGS="add-user EMAIL --role professor"`.
+
+Those rules are broader than they need to be for the **role**:
+- **It can't lock anyone out.** Access to the Admin page comes from the `is_admin`/`is_superuser` flags; the role only decides who can create courses.
+- **It isn't an escalation.** A superuser can already invite any account as a professor.
+- **It's still audited,** with the same user as actor and target.
+
+What needs protecting is the superuser **flag** (CLI only, so a stolen admin session can't change it) and disabling yourself or dropping your own admin flag (a real lockout).
+
+**Goal:**
+
+| Change | Today | After |
+|---|---|---|
+| A superuser changes **their own role** | blocked | allowed |
+| A superuser changes **another superuser's role** | blocked | allowed |
+| Disabling yourself, or changing your own admin flag | blocked | still blocked |
+| Changing a superuser's flags, or disabling one | blocked | still blocked (CLI only) |
+
+- **API:** in `update_user`, allow a role-only change (no `is_active`/`is_admin` in the body) when the caller is a superuser, even for their own row or another superuser's.
+- **Frontend:** split `canEdit` into "can change role" and "can change flags or disable", so the role dropdown unlocks while the rest of the row stays locked.
+- **Tests:** add to `services/ingest/tests/test_admin_routes.py` and `AdminPage.test.tsx`: a superuser changes their own role and another superuser's; still can't disable themselves or another superuser.
+- **Docs:** the rules in [ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) and `services/README.md`.
+- **To decide:** whether admins who aren't superusers may also change their own role. That's harmless for the same reason (they can already invite anyone as a professor), but it's left out for now to keep the change small.
+
 ## Optional
 
 Ideas worth considering. Nothing depends on them; pick one up only if it's worth the time.
