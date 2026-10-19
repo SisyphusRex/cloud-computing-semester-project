@@ -2,20 +2,13 @@
 
 Open work that isn't scheduled in the [implementation plan](milestones/m2_prototype_review/implementation-plan.md) yet. Move an item there, or delete it, once it's picked up.
 
-## Move user roles into the database, set by admins
+## Finish the user-roles change (contract step)
 
-**Today:** the professor role comes from the `PROFESSOR_EMAILS` allowlist in `deploy/k8s/overlays/prod/values/values.env`. At each sign-in, [`load_user`](../services/common/src/li_common/auth.py) gives anyone on the list the professor role; everyone else is a student. Problems:
-- **The list is public.** `values.env` is committed to a public repository, so the professors' email addresses are published, and they stay in the Git history.
-- **Roles never go away.** Once an account has been a professor, it stays one even after it's removed from the list (the upsert keeps `professor`). Demoting someone needs a manual database change.
-- **Changing roles needs a release.** Adding a professor means editing `values.env` and deploying.
+[ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) moved roles into the database. The release that shipped it kept two things for one release, so that the previous version still works during a rollback:
+- **The empty `PROFESSOR_EMAILS` key** in `deploy/k8s/overlays/prod/values/values.env`. The previous pods read it from `li-config`, and `kubectl rollout undo` would fail if it were missing. Delete it.
+- **Search's `INSERT` on `users`** (`0002_app_roles.sql`). Sign-in now only claims invitations (an `UPDATE`), so a new migration can `REVOKE INSERT ON users FROM li_search_role`.
 
-**Goal:** roles live only in the `users` table, and an admin sets them.
-- Add an `admin` role, and decide how the first admin is created (for example a one-time `li-migrate`-style command, or a single bootstrap email kept in a `prod` secret).
-- Give admins a way to promote and demote users: an admin page in the frontend backed by an Ingest API endpoint, or a documented SQL procedure to begin with.
-- Stop reading `PROFESSOR_EMAILS` in [`config.py`](../services/common/src/li_common/config.py) and `auth.py`. Remove it from `values.env`, `docker-compose.yml`, `docker-compose.google.yml`, `.env.example` and the docs. Keep a dev-only way to get a professor locally (dev sign-in's `prof@example.edu`).
-- New sign-ins default to student. Demotion takes effect on the next request.
-- Tests: role changes, demotion, non-admins can't change roles.
-- Update the M3 security review (who can grant roles, and the audit trail).
+Do both in the next release after it, once it's clear no rollback is needed.
 
 ## Write an onboarding guide for new developers
 

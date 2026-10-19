@@ -12,7 +12,7 @@ How to run all of Lecture Indexer on your own machine: Postgres, the Ingest and 
 | Search API (Flask) | Docker container (`search`) | http://localhost:8082 |
 | Frontend (React + Vite) | Node on your machine | http://localhost:5173 |
 
-The frontend's dev server forwards `/ingest/*` to `:8081` and `/search/*` to `:8082`, so the browser only ever talks to `localhost:5173`. Locally the APIs accept **dev sign-in** (`Authorization: Bearer dev:<email>`) instead of Google; `prof@example.edu` is a professor and any other email is a student.
+The frontend's dev server forwards `/ingest/*` to `:8081` and `/search/*` to `:8082`, so the browser only ever talks to `localhost:5173`. Locally the APIs accept **dev sign-in** (`Authorization: Bearer dev:<email>`) instead of Google. Sign-in is invite-only ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md)): docker compose invites `prof@example.edu` (professor and superuser) and `student@example.edu`; any other email gets "not invited" until someone invites it.
 
 ## Prerequisites
 
@@ -136,8 +136,9 @@ make frontend-dev                              # leave running; Ctrl-C to stop
 ```
 
 Open **http://localhost:5173**:
-- **`prof@example.edu`** sees the **Manage** page: create courses, register and remove lectures.
-- **`student@example.edu`** (or any other email): browse courses and search them.
+- **`prof@example.edu`** sees the **Manage** page (create courses, register and remove lectures) and the **Admin** page (invite users, change roles, grant admin).
+- **`student@example.edu`**: browse courses and search them.
+- **Any other email** is refused until `prof@example.edu` invites it on the Admin page, or you run `docker compose run --rm seed li-admin add-user EMAIL --role professor`.
 
 **Registering a lecture fails in dev mode**, with a YouTube token error. The Ingest API really calls YouTube with your Google token, so it needs real Google sign-in and your own video with YouTube auto-generated captions. That's described in the implementation plan, [Next: real Google/YouTube test](milestones/m2_prototype_review/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying).
 

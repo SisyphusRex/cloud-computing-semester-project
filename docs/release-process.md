@@ -65,7 +65,7 @@ Open the run and read the **Review sheet** job's log and the **Terraform plan** 
 | **Workflows and `scripts/ci/`** (⚠) | Read every changed line | Anything new done with credentials: printing environment variables or tokens, `terraform destroy`, new third-party actions, new `curl` to unknown hosts. The workflow that runs is the version on `main` right now |
 | **Terraform plan** | Read the plan job's output | `destroy`, or `-/+` (replace), on Cloud SQL `li-pg`, the `li-api` IP (the hostname would change), the cluster, or Cloud Run; new IAM roles; bigger tiers or always-on instances. On a release with no infra changes the plan says "no changes"; anything else means the cloud has drifted from the code |
 | **Migrations** (⚠) | Read the SQL in the review sheet | `DROP`, renames, rewrites of existing data, `NOT NULL` without a default, anything the *previous* release can't run against (see the migration rule). A note about an edited old migration means the edit won't take effect |
-| **`values.env`** | Read the diff | Who's in `PROFESSOR_EMAILS`; `CORS_ORIGINS` and `API_HOSTNAME` must match `terraform output` |
+| **`values.env`** | Read the diff | `CORS_ORIGINS` and `API_HOSTNAME` must match `terraform output` |
 | **Commits** | The list since the last tag | Anything you didn't expect to ship |
 | **Timing** | — | Someone is demoing or testing; nobody can watch the run for the next 15 minutes |
 
@@ -90,7 +90,7 @@ How a `prod` reviewer who didn't write the change goes through a waiting release
    | `.github/workflows`, `scripts/ci` | Runs with production credentials as soon as you approve | Printing environment variables or tokens (`env`, `printenv`, `set -x`); `curl` to unknown hosts; `terraform destroy`; new `uses:` actions from unfamiliar publishers; wider `permissions:`; a changed `environment:` |
    | **Terraform plan** job → **Plan** step | Approving applies exactly this plan | Anything but "No changes" that the commits don't explain; any unexplained `destroy` or `-/+` on the database, the IP or the cluster |
    | `db/migrations` | Runs once, can't be undone | `DROP`, renames, data rewrites, an edited old migration |
-   | `deploy/k8s/overlays/prod/values/values.env` | Who gets professor rights; which site may call the API | Unknown emails in `PROFESSOR_EMAILS`; URLs that aren't ours |
+   | `deploy/k8s/overlays/prod/values/values.env` | Which site may call the API, and which OAuth client signs users in | URLs that aren't ours; a changed `GOOGLE_CLIENT_ID` |
    | `services`, `frontend` | App behavior; CI already tested it | Changes no commit message explains |
 
 5. **CI passed.** The run's **ci / CI passed on this commit** job must be green.
