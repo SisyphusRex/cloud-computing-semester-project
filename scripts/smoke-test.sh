@@ -32,6 +32,10 @@ wait_ready() {  # wait_ready <url>: up to 90 s for the service and its database
 wait_ready "$INGEST"
 wait_ready "$SEARCH"
 check 401 "no token is rejected" "$SEARCH/search/courses"
+check 403 "uninvited account is rejected" "$SEARCH/search/courses" \
+  -H "Authorization: Bearer dev:uninvited-$RANDOM@example.edu"
+check 200 "invited professor is a superuser (compose seed)" "$INGEST/ingest/me" -H "$PROF"
+grep -q '"is_superuser":true' /tmp/smoke-body || { echo "FAIL prof@example.edu isn't a superuser"; exit 1; }
 check 201 "professor creates a course" -X POST "$INGEST/ingest/courses" \
   -H "$PROF" -H 'Content-Type: application/json' -d "{\"code\":\"$CODE\",\"title\":\"Smoke test\"}"
 check 403 "student cannot create a course" -X POST "$INGEST/ingest/courses" \

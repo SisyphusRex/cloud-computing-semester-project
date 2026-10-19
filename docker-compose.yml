@@ -1,11 +1,12 @@
 # Local stack: Postgres, migrations, and both APIs.
 # Uses dev auth ("Authorization: Bearer dev:<email>"); never reuse these settings in GKE.
+# Sign-in is invite-only; `seed` invites prof@example.edu (professor, superuser)
+# and student@example.edu.
 name: lecture-indexer
 
 x-api-env: &api-env
   DATABASE_URL: postgresql://li:li@db:5432/li
   LI_DEV_AUTH: "1"
-  PROFESSOR_EMAILS: prof@example.edu
   CORS_ORIGINS: http://localhost:5173
 
 x-ingest-build: &ingest-build
@@ -38,6 +39,20 @@ services:
       db:
         condition: service_healthy
 
+  # Idempotent, so it runs on every `up` and never demotes anyone.
+  seed:
+    build: *ingest-build
+    image: li-ingest:dev
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - li-admin create-superuser prof@example.edu &&
+        li-admin add-user prof@example.edu --role professor &&
+        li-admin add-user student@example.edu --role student
+    environment: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   ingest:
     build: *ingest-build
     image: li-ingest:dev
@@ -45,7 +60,7 @@ services:
     ports:
       - "8081:8080"
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
 
   search:
@@ -57,7 +72,7 @@ services:
     ports:
       - "8082:8080"
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
 
 volumes:

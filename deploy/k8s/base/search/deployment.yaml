@@ -69,9 +69,6 @@ spec:
             - name: GOOGLE_CLIENT_ID
               valueFrom:
                 configMapKeyRef: { name: li-config, key: GOOGLE_CLIENT_ID }
-            - name: PROFESSOR_EMAILS
-              valueFrom:
-                configMapKeyRef: { name: li-config, key: PROFESSOR_EMAILS }
             - name: CORS_ORIGINS
               valueFrom:
                 configMapKeyRef: { name: li-config, key: CORS_ORIGINS }
