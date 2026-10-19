@@ -45,8 +45,8 @@ services:
     image: li-ingest:dev
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - li-admin create-superuser prof@example.edu &&
-        li-admin add-user prof@example.edu --role professor &&
+      - li-admin add-user prof@example.edu --role professor &&
+        li-admin create-superuser prof@example.edu &&
         li-admin add-user student@example.edu --role student
     environment: *api-env
     depends_on:
