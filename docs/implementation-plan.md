@@ -63,6 +63,7 @@ Per the proposal:
 | **Frontend: React 19, Vite 8, React Router 8, TypeScript 6.0** | Current releases; TypeScript stays below 6.1 because typescript-eslint doesn't support newer yet. |
 | **The Vite dev server proxies `/ingest` and `/search`** to the local APIs | The app uses the same paths locally and in production (`VITE_API_BASE` = the API host). |
 | **Search excerpts are rendered without `innerHTML`**: the client splits `excerpt_html` on `<mark>` and emits text nodes | Defense in depth on top of the server's escaping. |
+| **Search hits play in an embedded `youtube-nocookie.com` player** (a plain iframe, not the IFrame Player API), with the clip in the URL (`?q=…&v=…&t=…`) | Students stay on the site; only CSP `frame-src` grows, and `script-src` gets no YouTube script. Jumping to another timestamp reloads the player. Videos with embedding turned off are still indexed, and their hits link to youtube.com. |
 | **Professor detection**: the frontend calls `GET /ingest/courses`; 403 means student | No extra endpoint needed; roles stay server-side. |
 | **The YouTube access token stays in browser memory** until shortly before it expires | One consent popup per session, never stored. |
 | **Only YouTube's auto-generated (ASR) captions**, fetched with `captions.download`; tracks the creator uploaded are ignored, and users never upload caption files to us | One caption source, one format (WebVTT). A video without an ASR track fails with `422 no_captions`. |

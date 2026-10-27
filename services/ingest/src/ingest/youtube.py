@@ -51,6 +51,8 @@ class Video:
     id: str
     title: str
     channel_id: str
+    # False when the owner turned off "Allow embedding" in YouTube Studio.
+    embeddable: bool = True
 
 
 class YouTubeClient:
@@ -85,12 +87,14 @@ class YouTubeClient:
         return {item["id"] for item in data.get("items", [])}
 
     def get_video(self, video_id: str) -> Video:
-        data = self._get("videos.list", "/videos", {"part": "snippet", "id": video_id}).json()
+        params = {"part": "snippet,status", "id": video_id}
+        data = self._get("videos.list", "/videos", params).json()
         items = data.get("items", [])
         if not items:
             raise VideoNotFound(f"Video {video_id} not found")
         snippet = items[0]["snippet"]
-        return Video(video_id, snippet.get("title", ""), snippet["channelId"])
+        embeddable = items[0].get("status", {}).get("embeddable", True)
+        return Video(video_id, snippet.get("title", ""), snippet["channelId"], embeddable)
 
     def pick_caption_track(self, video_id: str, language: str = "en") -> dict:
         data = self._get(

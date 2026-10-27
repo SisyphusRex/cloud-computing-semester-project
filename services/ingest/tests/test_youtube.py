@@ -56,6 +56,13 @@ def test_verify_owner_rejects_other_channel():
         youtube.verify_owner(c, "abcdefghijk")
 
 
+def test_get_video_reads_embeddable():
+    listing = {"items": [{**VIDEO["items"][0], "status": {"embeddable": False}}]}
+    c = client({"/videos": FakeResponse(json=listing)})
+    assert c.get_video("abcdefghijk").embeddable is False
+    assert c._session.calls[0][1]["part"] == "snippet,status"
+
+
 def test_missing_video():
     c = client({"/videos": FakeResponse(json={"items": []})})
     with pytest.raises(youtube.VideoNotFound):

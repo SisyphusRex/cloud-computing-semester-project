@@ -18,6 +18,7 @@ const indexed = {
   indexed_at: "2026-10-15",
   created_at: "2026-10-15",
   segment_count: 42,
+  embeddable: true,
 };
 
 function setup(registerLecture: Api["registerLecture"]) {

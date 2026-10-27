@@ -23,11 +23,11 @@ def seeded(database_url):
                 (owner, code, code),
             ).fetchone()[0]
 
-        def lecture(course_id, video, title, status="indexed"):
+        def lecture(course_id, video, title, status="indexed", embeddable=True):
             return conn.execute(
-                "INSERT INTO lectures (course_id, youtube_video_id, title, status) "
-                "VALUES (%s, %s, %s, %s) RETURNING id",
-                (course_id, video, title, status),
+                "INSERT INTO lectures (course_id, youtube_video_id, title, status, embeddable) "
+                "VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (course_id, video, title, status, embeddable),
             ).fetchone()[0]
 
         def segment(lecture_id, start_ms, text):
@@ -42,7 +42,8 @@ def seeded(database_url):
         segment(l4, 202_000, "Lambda calculus is the basis of functional languages.")
         segment(l4, 300_000, "Careful: <script>alert(1)</script> lambda & friends")
         segment(lecture(cloud, "lecture5abc", "Fall Lecture 5", "failed"), 0, "lambda draft")
-        segment(lecture(other, "otherxyzabc", "Intro"), 0, "lambda calculus elsewhere")
+        intro = lecture(other, "otherxyzabc", "Intro", embeddable=False)
+        segment(intro, 0, "lambda calculus elsewhere")
     return {"cloud": cloud, "other": other}
 
 
@@ -65,7 +66,17 @@ def test_phrase_search_returns_deep_link(client, auth, seeded):
     assert hit["lecture_title"] == "Fall Lecture 4"
     assert hit["timestamp"] == "03:22"
     assert hit["url"] == "https://www.youtube.com/watch?v=lecture4abc&t=202s"
+    assert hit["embeddable"] is True
     assert "<mark>Lambda</mark>" in hit["excerpt_html"]
+
+
+def test_hits_say_when_the_video_cannot_be_embedded(client, auth, seeded):
+    hits = client.get(
+        f"/search/courses/{seeded['other']}/segments",
+        query_string={"q": "lambda"},
+        headers=auth(STUDENT),
+    ).json["hits"]
+    assert [h["embeddable"] for h in hits] == [False]
 
 
 def test_stemming_matches_word_forms(client, auth, seeded):

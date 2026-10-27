@@ -18,12 +18,13 @@ class FakeYouTube:
     channel = "UC_mine"
     captions = VTT
     has_asr_track = True
+    embeddable = True
 
     def __init__(self, token):
         assert token == "yt-token"
 
     def get_video(self, video_id):
-        return youtube.Video(video_id, "Fall Lecture 4", "UC_mine")
+        return youtube.Video(video_id, "Fall Lecture 4", "UC_mine", self.embeddable)
 
     def my_channel_ids(self):
         return {self.channel}
@@ -84,6 +85,7 @@ def test_register_lecture_indexes_segments(client, auth, course_id):
     assert resp.json["title"] == "Fall Lecture 4"
     assert resp.json["youtube_video_id"] == VIDEO_ID
     assert resp.json["segment_count"] == 2
+    assert resp.json["embeddable"] is True
 
     courses = client.get("/ingest/courses", headers=auth(PROF)).json["courses"]
     assert courses[0]["lecture_count"] == 1
@@ -94,6 +96,18 @@ def test_reregistering_replaces_segments(client, auth, course_id):
     resp = register(client, auth, course_id)
     assert resp.status_code == 201
     assert resp.json["segment_count"] == 2
+
+
+def test_non_embeddable_video_is_indexed_and_flagged(client, auth, course_id, monkeypatch):
+    monkeypatch.setattr(FakeYouTube, "embeddable", False)
+    resp = register(client, auth, course_id)
+    assert resp.status_code == 201
+    assert resp.json["status"] == "indexed"
+    assert resp.json["embeddable"] is False
+
+    # Re-registering picks up the professor turning embedding back on.
+    monkeypatch.setattr(FakeYouTube, "embeddable", True)
+    assert register(client, auth, course_id).json["embeddable"] is True
 
 
 def test_validation_and_missing_youtube_token(client, auth, course_id):

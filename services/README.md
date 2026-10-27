@@ -66,11 +66,11 @@ Nobody can change their own account; only superusers can change admins; superuse
 |---|---|---|---|
 | `POST` | `/ingest/courses` | `{"code": "CS6030", "title": "..."}` | `201` course; `409` duplicate code |
 | `GET` | `/ingest/courses` | | your courses with `lecture_count` |
-| `POST` | `/ingest/courses/{id}/lectures` | `{"video": "<YouTube URL or ID>"}` + `X-YouTube-Token: <OAuth access token>` | `201` lecture with `status: "indexed"` and `segment_count` |
+| `POST` | `/ingest/courses/{id}/lectures` | `{"video": "<YouTube URL or ID>"}` + `X-YouTube-Token: <OAuth access token>` | `201` lecture with `status: "indexed"`, `segment_count` and `embeddable` |
 | `GET` | `/ingest/lectures/{id}` | | lecture status, including `error` when `failed` |
 | `DELETE` | `/ingest/lectures/{id}` | | `204` |
 
-The YouTube access token needs the `https://www.googleapis.com/auth/youtube.force-ssl` scope (the caption endpoints accept no narrower one). It is used for that request only and never stored or logged. Registering a lecture fails with `403 not_video_owner` unless the video belongs to the signed-in account's channel, `422 no_captions` if it has no auto-generated (ASR) caption track (tracks the creator uploaded are ignored), and `503 youtube_quota` when the API quota is exhausted. Re-registering a video re-indexes it.
+The YouTube access token needs the `https://www.googleapis.com/auth/youtube.force-ssl` scope (the caption endpoints accept no narrower one). It is used for that request only and never stored or logged. Registering a lecture fails with `403 not_video_owner` unless the video belongs to the signed-in account's channel, `422 no_captions` if it has no auto-generated (ASR) caption track (tracks the creator uploaded are ignored), and `503 youtube_quota` when the API quota is exhausted. Re-registering a video re-indexes it. A video whose owner turned off "Allow embedding" is still indexed, with `embeddable: false`; re-registering picks up a changed setting.
 
 ### Search (any signed-in user)
 
@@ -90,9 +90,12 @@ The YouTube access token needs the `https://www.googleapis.com/auth/youtube.forc
   "start_seconds": 202,
   "timestamp": "03:22",
   "excerpt_html": "<mark>Lambda</mark> <mark>calculus</mark> is the basis of functional languages.",
-  "url": "https://www.youtube.com/watch?v=abcdefghijk&t=202s"
+  "url": "https://www.youtube.com/watch?v=abcdefghijk&t=202s",
+  "embeddable": true
 }
 ```
+
+The frontend plays hits in an embedded player at `start_seconds`; it falls back to `url` when `embeddable` is false.
 
 `excerpt_html` is safe to render as HTML: the caption text is escaped and the only tags are `<mark>`.
 

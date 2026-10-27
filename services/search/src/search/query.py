@@ -6,6 +6,7 @@ _SEARCH_SQL = """
 SELECT l.id AS lecture_id,
        l.title AS lecture_title,
        l.youtube_video_id AS video_id,
+       l.embeddable,
        s.start_ms,
        ts_headline(
            'english',
@@ -46,6 +47,7 @@ def search_segments(conn, course_id: int, q: str, limit: int) -> list[dict]:
             "timestamp": format_timestamp(r["start_ms"]),
             "excerpt_html": r["excerpt_html"],
             "url": youtube_url(r["video_id"], r["start_ms"]),
+            "embeddable": r["embeddable"],
         }
         for r in rows
     ]

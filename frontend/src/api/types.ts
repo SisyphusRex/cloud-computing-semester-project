@@ -31,6 +31,8 @@ export interface IngestLecture {
   caption_language: string | null;
   status: "pending" | "indexed" | "failed";
   error: string | null;
+  /** False when the owner turned off embedding; search hits then link to youtube.com. */
+  embeddable: boolean;
   indexed_at: string | null;
   created_at: string;
   segment_count: number;
@@ -44,7 +46,9 @@ export interface SearchHit {
   timestamp: string;
   /** Caption text, HTML-escaped by the server, with matches wrapped in <mark>. */
   excerpt_html: string;
+  /** youtube.com at this timestamp; used only when the video can't be embedded. */
   url: string;
+  embeddable: boolean;
 }
 
 export interface SearchResponse {

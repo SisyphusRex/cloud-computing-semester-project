@@ -16,7 +16,7 @@ bp = Blueprint("ingest", __name__, url_prefix="/ingest")
 
 _LECTURE_COLUMNS = """
     l.id, l.course_id, l.youtube_video_id, l.title, l.caption_language, l.status,
-    l.error, l.indexed_at, l.created_at,
+    l.error, l.embeddable, l.indexed_at, l.created_at,
     (SELECT count(*) FROM segments s WHERE s.lecture_id = l.id) AS segment_count
 """
 
@@ -75,13 +75,14 @@ def register_lecture(course_id: int):
     with db.connection() as conn:
         lecture_id = conn.execute(
             """
-            INSERT INTO lectures (course_id, youtube_video_id, title)
-            VALUES (%s, %s, %s)
+            INSERT INTO lectures (course_id, youtube_video_id, title, embeddable)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT (course_id, youtube_video_id)
-                DO UPDATE SET title = EXCLUDED.title, status = 'pending', error = NULL
+                DO UPDATE SET title = EXCLUDED.title, embeddable = EXCLUDED.embeddable,
+                              status = 'pending', error = NULL
             RETURNING id
             """,
-            (course_id, video.id, video.title),
+            (course_id, video.id, video.title, video.embeddable),
         ).fetchone()["id"]
 
     try:

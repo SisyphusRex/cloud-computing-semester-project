@@ -127,6 +127,8 @@ function CourseCard({ course, onChange }: { course: MyCourse; onChange: () => vo
       {result && (
         <p className="success" role="status">
           Indexed “{result.title}”: {result.segment_count} segments.
+          {!result.embeddable &&
+            " Embedding is turned off for this video in YouTube Studio, so search results open it on YouTube."}
         </p>
       )}
       <ErrorMessage error={error} />
