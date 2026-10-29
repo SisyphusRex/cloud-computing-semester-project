@@ -48,16 +48,13 @@
 
 \begin{abstract}
 Milestone 2 asks for an initial deployment, a CI/CD pipeline, and basic
-functionality. Lecture Indexer (LI) meets all three. Terraform provisions
-the production environment on Google Cloud and Microsoft Azure. A GitHub
-Actions pipeline tests every push and releases every merge to
-\texttt{main} after one human approval, with automatic rollback. It has
-shipped three tagged releases. In production, a professor signs in with
-Google and registers a YouTube lecture, LI indexes its auto-generated
-captions, and a student searches the course and jumps to the moment a word
-is spoken. This report maps each deliverable to the evidence in our
-repository and explains where the build differs from the Milestone~1
-proposal, and why.
+functionality. Lecture Indexer (LI) has all three. The system runs in
+production on Google Cloud, with Microsoft Azure as the second provider,
+and all of its infrastructure is defined in Terraform. A GitHub Actions
+pipeline tests every change and releases to production after one team
+approval. The core workflow from our proposal works end to end: a professor
+registers a YouTube lecture, and a student searches it and jumps to the
+moment a term is spoken.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -65,41 +62,36 @@ cloud-native, multi-cloud, Kubernetes, CI/CD, Terraform, GitHub Actions.
 \end{IEEEkeywords}
 
 \section{Introduction}
-Our Milestone~1 proposal described LI, a service that retrieves the timed
-captions of recorded lectures from the YouTube Data API, indexes them with
-PostgreSQL full-text search, and returns deep links such as
-\texttt{?t=202} to the moment a term is spoken~\cite{m1}. Table~\ref{tab:summary}
-summarizes how we met each Milestone~2 deliverable. Sections~\ref{sec:deploy}--\ref{sec:func}
-give the evidence for each one. All source code, workflow runs, and releases
-are public at \url{\repo}.
+LI makes recorded lectures searchable. It retrieves the timed captions of a
+course's YouTube videos, indexes them, and returns links that open each
+video at the moment a search term is spoken~\cite{m1}. This report covers
+the prototype we built for Milestone~2. Table~\ref{tab:summary} summarizes
+how we met each deliverable, and the following sections describe each one.
+Source code, workflow runs, and releases are public at \url{\repo}.
 
 \begin{table}[!t]
-\caption{Milestone 2 deliverables and evidence}
+\caption{Milestone 2 deliverables}
 \label{tab:summary}
 \centering\small
 \begin{tabularx}{\columnwidth}{@{}lX@{}}
 \toprule
-Deliverable & Evidence \\
+Deliverable & How we met it \\
 \midrule
-Initial deployment & Terraform \texttt{envs/prod} applied on 2026-10-18 (52 resources, GCP and Azure); live frontend and API (Sec.~\ref{sec:deploy}) \\
-CI/CD pipeline & 6-job CI on every push; one-approval release with automatic rollback; releases \texttt{prod-2026-10-18.1}, \texttt{-10-19.1}, \texttt{-10-27.1} (Sec.~\ref{sec:cicd}) \\
-Basic functionality & End-to-end test passed in production; 9 manual test cases; 126 automated tests passing (Sec.~\ref{sec:func}) \\
+Initial deployment & Production environment on Google Cloud and Azure, provisioned with Terraform and running live \\
+CI/CD pipeline & Automated tests on every change; one-approval releases with automatic rollback; three releases shipped \\
+Basic functionality & Sign-in, lecture registration, search, and deep links, tested end to end in production \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\section{As-Built Architecture}
-\label{sec:arch}
-Fig.~\ref{fig:arch} shows the system we deployed. The React SPA is
-served by nginx on Cloud Run. It calls two Flask services, the Ingest API and
-the Search API, on a GKE Autopilot cluster. A global HTTPS load balancer
-with a Google-managed certificate routes \texttt{/ingest/*} and
-\texttt{/search/*} to them. Each service has its own Horizontal Pod
-Autoscaler (1--4 replicas at 70\% CPU) and a Cloud SQL Auth Proxy sidecar
-that connects to a private-IP Cloud SQL for PostgreSQL instance using IAM
-database authentication. Images are stored in Artifact Registry, and the
-database admin password in Secret Manager. Pods reach Google APIs through
-Workload Identity, so no service-account keys exist.
+\section{Architecture}
+Fig.~\ref{fig:arch} shows the system as deployed. A React web app, hosted
+on Cloud Run, calls two containerized Flask services on Google Kubernetes
+Engine (GKE): an Ingest API that registers lectures and a Search API that
+answers queries. Each service scales independently. They share a Cloud SQL
+for PostgreSQL database, whose built-in full-text search provides the index.
+Users sign in with their Google accounts. Secrets are kept in Secret
+Manager, and the services reach Google Cloud without stored keys.
 
 \begin{figure*}[!t]
 \centering
@@ -109,28 +101,25 @@ Workload Identity, so no service-account keys exist.
   cloud/.style={draw, dashed, rounded corners=4pt, inner sep=6pt},
   arr/.style={-{Stealth[length=2mm]}},
   node distance=6mm and 9mm]
-  % users
-  \node[box] (users) {Professor / Student\\(browser)};
-  % GCP
-  \node[box, right=of users, yshift=10mm] (run) {Cloud Run\\\texttt{li-frontend}\\React + nginx};
-  \node[box, right=of users, yshift=-10mm] (lb) {HTTPS Load Balancer\\managed cert\\\texttt{li-api}};
-  \node[box, right=12mm of lb, yshift=7mm] (ingest) {Ingest API\\HPA 1--4\\+ SQL proxy};
-  \node[box, right=12mm of lb, yshift=-7mm] (search) {Search API\\HPA 1--4\\+ SQL proxy};
-  \node[box, right=12mm of ingest, yshift=-7mm] (sql) {Cloud SQL\\PostgreSQL 16\\full-text index};
-  \node[box, above=5mm of sql] (sm) {Secret Manager\\Workload Identity};
-  \node[box, above=5mm of sm] (ar) {Artifact\\Registry};
-  \node[cloud, fit=(ingest)(search), label={[font=\scriptsize]below:GKE Autopilot \texttt{li}}] (gke) {};
-  \node[box, above=5mm of run, xshift=-14mm] (gsi) {Google Sign-In\\OIDC};
+  \node[box] (users) {Professors and\\students};
+  \node[box, right=of users, yshift=10mm] (run) {Web app\\(Cloud Run)};
+  \node[box, right=of users, yshift=-10mm] (lb) {HTTPS load\\balancer};
+  \node[box, right=12mm of lb, yshift=7mm] (ingest) {Ingest API};
+  \node[box, right=12mm of lb, yshift=-7mm] (search) {Search API};
+  \node[box, right=12mm of ingest, yshift=-7mm] (sql) {Cloud SQL\\PostgreSQL\\full-text index};
+  \node[box, above=5mm of sql] (sm) {Secret Manager};
+  \node[box, above=5mm of sm] (ar) {Artifact Registry};
+  \node[cloud, fit=(ingest)(search), label={[font=\scriptsize]below:GKE (autoscaled)}] (gke) {};
+  \node[box, above=5mm of run, xshift=-14mm] (gsi) {Google Sign-In};
   \node[box, above=5mm of ingest, yshift=12mm] (yt) {YouTube\\Data API};
-  % Azure and GitHub
-  \node[box, below=16mm of search, xshift=-22mm] (gh) {GitHub Actions\\CI + Release (OIDC)};
-  \node[box, right=12mm of gh] (tf) {Terraform\\bootstrap + \texttt{envs/prod}};
-  \node[box, right=12mm of tf] (az) {Azure \texttt{northcentralus}\\CI identities, \texttt{rg-li-prod}\\(Blob backups: M3)};
+  \node[box, below=14mm of search, xshift=-22mm] (gh) {GitHub Actions\\CI/CD};
+  \node[box, right=12mm of gh] (tf) {Terraform};
+  \node[box, right=12mm of tf] (az) {Microsoft Azure\\CI identities; backups (M3)};
   \begin{scope}[on background layer]
-    \node[cloud, fill=blue!4, fit=(run)(lb)(gke)(sql)(sm)(ar), label={[font=\scriptsize]above right:Google Cloud \texttt{us-central1}}] {};
+    \node[cloud, fill=blue!4, fit=(run)(lb)(gke)(sql)(sm)(ar), label={[font=\scriptsize]above right:Google Cloud}] {};
   \end{scope}
   \draw[arr] (users) -- (run);
-  \draw[arr] (users) -- node[below left, font=\scriptsize, align=center]{API +\\ID token} (lb);
+  \draw[arr] (users) -- (lb);
   \draw[arr] (users) |- (gsi);
   \draw[arr] (lb) -- (ingest);
   \draw[arr] (lb) -- (search);
@@ -141,285 +130,102 @@ Workload Identity, so no service-account keys exist.
   \draw[arr] (tf) -- (az);
   \draw[arr] (gh.north) -- node[left, font=\scriptsize]{deploy} (gke.south west);
 \end{tikzpicture}
-\caption{As-built architecture of the production environment. Dashed boxes
-mark cloud and cluster boundaries. Azure holds the CI identities and the
-resource group for the nightly backups, which arrive in Milestone~3.}
+\caption{The deployed architecture. The application runs on Google Cloud.
+Azure holds the CI identities and, from Milestone~3, the off-site database
+backups. GitHub Actions and Terraform deploy to and provision both clouds.}
 \label{fig:arch}
 \end{figure*}
 
-\subsection{Changes from the proposal}
-\begin{itemize}
-\item \textbf{Frontend on Cloud Run, not Azure Static Web Apps.} Our Azure
-for Students subscription allows only five regions, and Static Web Apps is
-offered in none of them. The frontend therefore runs as an nginx container
-on Cloud Run, which scales to zero~\cite{adr1}.
-\item \textbf{Azure region.} Azure refused \texttt{eastus2}
-(\texttt{RequestDisallowedByAzure}), so all Azure resources are in
-\texttt{northcentralus}.
-\item \textbf{Invite-only sign-in.} We started with a \texttt{PROFESSOR\_EMAILS}
-allowlist. It published email addresses in a public repository and required
-a release for every role change. Roles now live in the database: admins
-invite users and set their roles on an Admin page~\cite{adr2}.
-\end{itemize}
-
-The multi-cloud requirement still holds. Azure hosts the CI deploy
-identities, which are federated with GitHub over OIDC, and the production
-resource group for the off-site backups (Section~\ref{sec:next}).
+\textbf{Changes from the proposal.} The proposal placed the web app on
+Azure Static Web Apps. Our student Azure subscription cannot create that
+service in any region it allows, so the web app moved to Cloud
+Run~\cite{adr1}. Azure remains our second provider: it holds the identities
+the pipeline uses, and it will store the nightly backups. We also made
+sign-in invite-only, with roles managed by admins inside the app~\cite{adr2}.
 
 \section{Deliverable 1: Initial Deployment}
 \label{sec:deploy}
+All infrastructure is written in Terraform and can be rebuilt from the
+repository~\cite{runbook}. Terraform creates the network, the GKE cluster,
+the database, the container registry, the secrets, and the Cloud Run
+service on Google Cloud, plus the resource groups and identities on Azure.
+The Kubernetes configuration is versioned as well, including the
+autoscaling rules, network policies, and HTTPS ingress.
 
-\subsection{Infrastructure as code}
-All infrastructure is Terraform, in two stages~\cite{runbook}:
-\begin{enumerate}
-\item \textbf{\texttt{bootstrap/}} creates the CI identities: a GCP Workload
-Identity pool and the service accounts \texttt{github-terraform},
-\texttt{github-deploy}, and \texttt{github-plan}, plus the Azure managed
-identities \texttt{id-li-github} and \texttt{id-li-github-plan}. Each has
-federated credentials scoped to our repository and its \texttt{prod}
-environment. State lives in a versioned GCS bucket with public access blocked.
-\item \textbf{\texttt{envs/prod}} composes reusable modules
-(\texttt{gcp-network}, \texttt{gke}, \texttt{cloudsql},
-\texttt{artifact-registry}, \texttt{secrets}, \texttt{cloud-run-frontend})
-into 52 resources. We applied it on 2026-10-18; GKE took 7\,min 38\,s and
-Cloud SQL 13\,min 4\,s. A fresh plan shows no changes.
-\end{enumerate}
-CI runs \texttt{terraform validate} and a mocked \texttt{terraform test}
-suite (3 tests) on every push.
+The environment has run in production since October 18, 2026.
+Figs.~\ref{fig:gke}--\ref{fig:azure} show the services running on GKE and
+Cloud Run and the Azure identities. Because a student budget is limited,
+one command pauses the paid resources between test sessions without losing
+any data. This cuts the idle cost to a few dollars a month.
 
-Kubernetes manifests are Kustomize bases with a \texttt{prod} overlay
-(\texttt{deploy/k8s/}). They define Deployments, Services, HPAs, a default-deny
-NetworkPolicy, the Ingress with a ManagedCertificate, and a migration Job
-that runs numbered SQL migrations before each rollout. \texttt{make
-k8s-check} validates the rendered overlays against Kubernetes schemas.
+\screenshot{fig-gke.png}{The Ingest and Search services running on GKE,
+each healthy and autoscaled.}{fig:gke}
 
-\subsection{Deployed environment}
-\begin{table}[!t]
-\caption{Production resources by provider}
-\label{tab:resources}
-\centering\small
-\begin{tabularx}{\columnwidth}{@{}lX@{}}
-\toprule
-Provider & Resources \\
-\midrule
-Google Cloud & VPC \texttt{li} + Cloud NAT; GKE Autopilot \texttt{li}; Cloud SQL \texttt{li-pg}; Artifact Registry \texttt{li}; Secret Manager; Cloud Run \texttt{li-frontend}; global IP \texttt{li-api}; workload service accounts; Workload Identity pool \\
-Microsoft Azure & \texttt{rg-li-ci} with the two federated CI identities; \texttt{rg-li-prod} for backups \\
-GitHub & \texttt{prod} and \texttt{prod-plan} environments, 11 repository variables, required reviewers \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\screenshot{fig-cloudrun.png}{The web app on Cloud Run: each release
+creates a new revision, and traffic moves to it only after a health
+check passes.}{fig:cloudrun}
 
-Table~\ref{tab:resources} lists what runs where. The live endpoints are:
-\begin{itemize}
-\item Frontend: \url{https://li-frontend-byshtpdfha-uc.a.run.app}
-\item API: \url{https://34-128-137-19.sslip.io}. Without a sign-in,
-\texttt{/search/courses} answers \texttt{401}.
-\end{itemize}
-Figs.~\ref{fig:gke}--\ref{fig:azure} show the running workloads and the
-Azure identities.
-
-\textbf{Cost control.} \texttt{make cloud-pause} scales the API pods to
-zero, deletes the load balancer, and stops Cloud SQL. It keeps all data and
-the API hostname, and \texttt{make cloud-resume} reverses it. Idle cost drops
-from about \$40--60 to about \$9 per month. Terraform ignores Cloud SQL's
-activation state, so an apply never restarts a paused database.
-
-\screenshot{fig-gke.png}{The \texttt{ingest} and \texttt{search}
-Deployments on GKE Autopilot cluster \texttt{li}, namespace \texttt{li}:
-replicas ready and Horizontal Pod Autoscaler OK.}{fig:gke}
-
-\screenshot{fig-cloudrun.png}{Cloud Run service \texttt{li-frontend}: one
-revision per release, deployed by the \texttt{github-deploy} service account,
-with all traffic on the latest.}{fig:cloudrun}
-
-\screenshot{fig-azure.png}{Azure resource group \texttt{rg-li-ci} with the
-two managed identities that GitHub Actions signs in as, in North Central
-US.}{fig:azure}
-
-\subsection{Problems found and fixed}
-Bringing the environment up exposed three problems. We fixed each one in
-code, so that a fresh deployment works the first time:
-\begin{enumerate}
-\item The Azure region policy (above).
-\item The Artifact Registry module did not wait for its API to be enabled.
-We added a \texttt{depends\_on}.
-\item The repository uses GitHub's immutable OIDC subject format
-(\texttt{repo:Owner@id/name@id:\dots}), so no CI binding matched. We added a
-\texttt{github\_subject\_prefix} variable to bootstrap.
-\end{enumerate}
+\screenshot{fig-azure.png}{Azure, the second cloud provider: the identities
+the release pipeline signs in as.}{fig:azure}
 
 \section{Deliverable 2: CI/CD Pipeline}
 \label{sec:cicd}
-The pipeline consists of four GitHub Actions workflows~\cite{release}. None
-of them stores a cloud credential. Every cloud action signs in through OIDC
-federation to the GCP or Azure identities created by bootstrap.
-
-\subsection{Continuous integration (\texttt{ci.yml})}
-CI runs on every push to \texttt{main} and \texttt{development} and on every
-pull request. It has six jobs:
+The pipeline runs on GitHub Actions in two stages~\cite{release}:
 \begin{itemize}
-\item \textbf{Python:} Ruff lint and format checks, and pytest against a
-PostgreSQL~16 service container (93 tests).
-\item \textbf{Docker images:} builds the images and runs a smoke test
-against the full docker-compose stack.
-\item \textbf{Terraform:} format, validate, and the mocked tests, with no
-credentials.
-\item \textbf{Kubernetes manifests:} kustomize and kubeconform, plus a
-namespace check.
-\item \textbf{Frontend:} ESLint, Vitest (30 tests), and a production build.
-\item \textbf{Frontend image:} builds the nginx image and checks the
-security headers it serves.
+\item \textbf{Continuous integration.} Every push and pull request runs
+linting and the automated tests, builds the container images, and checks
+the Terraform and Kubernetes configuration (Fig.~\ref{fig:ci}).
+\item \textbf{Continuous delivery.} Every merge to \texttt{main} starts a
+release (Fig.~\ref{fig:release}). The pipeline first shows the changes and
+the infrastructure plan. A team member approves once, and the pipeline then
+updates the infrastructure, backs up the database if needed, builds and
+deploys the services and the web app, and tags the release. If any step
+fails, it rolls back automatically, and an earlier release can be restored
+at any time.
 \end{itemize}
-The latest run on \texttt{main} took 40\,s and passed (Fig.~\ref{fig:ci}).
+The pipeline stores no cloud passwords or keys. It signs in to Google Cloud
+and Azure with short-lived OIDC tokens.
 
-\subsection{Continuous delivery (\texttt{release.yml})}
-Every push to \texttt{main} starts one Release run, shown in
-Fig.~\ref{fig:release}:
-\begin{enumerate}
-\item \textbf{ci} waits for CI to pass on the commit.
-\item \textbf{review} prints a review sheet of every commit and migration
-since the last \texttt{prod-*} tag.
-\item \textbf{plan} runs the real Terraform plan with a read-only identity.
-\item \textbf{One approval} in the \texttt{prod} GitHub environment
-(three team reviewers; deploys only from \texttt{main}).
-\item \textbf{release} applies exactly the reviewed plan. Then it backs up
-Cloud SQL if there are new migrations, builds and pushes the three images
-tagged with the commit SHA, runs migrations, rolls out ingest and search
-(undone automatically on failure), and deploys the frontend to Cloud Run
-with no traffic. Traffic moves to the new revision only after a health
-check passes. A final check calls the API through the load balancer.
-\item \textbf{tag} creates \texttt{prod-YYYY-MM-DD.N} and a GitHub Release
-listing the commits.
-\end{enumerate}
-\texttt{rollback.yml} redeploys any earlier tag. \texttt{terraform.yml}
-posts a preview plan on pull requests. When the environment is paused, a
-release stops before asking for approval.
+The pipeline has shipped three releases so far. The first one needed a few
+attempts, as we found and fixed configuration problems. Each failed attempt
+stopped safely and left the running system untouched, which is what the
+pipeline was designed to do.
 
-\screenshot{fig-ci-run.png}{A passing CI run on \texttt{main} with all six
-jobs.}{fig:ci}
+\screenshot{fig-ci-run.png}{A passing CI run: tests, images, and
+configuration checks.}{fig:ci}
 
-\screenshot{fig-release-run.png}{A Release run: review, plan, the
-\texttt{prod} approval gate, release, and tag.}{fig:release}
-
-\subsection{Evidence that it works}
-The first production release needed five runs. Table~\ref{tab:runs} shows
-that each failure stopped safely, before it changed anything it should not
-have. A failed frontend check left the previous revision serving traffic.
-After that, the pipeline released \texttt{prod-2026-10-19.1} (invite-only
-sign-in, the Admin page) and \texttt{prod-2026-10-27.1} (the embedded
-player). Both took one approval and about six minutes.
-
-\begin{table}[!t]
-\caption{First release attempts (2026-10-18)}
-\label{tab:runs}
-\centering\small
-\begin{tabularx}{\columnwidth}{@{}clX@{}}
-\toprule
-Run & Failed at & Cause $\rightarrow$ fix \\
-\midrule
-1 & plan sign-in & Immutable OIDC subjects $\rightarrow$ subject prefix \\
-2 & migrations & ConfigMap had no namespace $\rightarrow$ \texttt{namespace: li} + check \\
-3 & pause check & Inferred pause from run 2's leftovers $\rightarrow$ explicit annotation \\
-4 & frontend check & Cloud Run reserves \texttt{/healthz} $\rightarrow$ \texttt{/health} \\
-5 & --- & Released as \texttt{prod-2026-10-18.1} \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\screenshot{fig-release-run.png}{A release run, from the change review and
+infrastructure plan through deployment and tagging.}{fig:release}
 
 \section{Deliverable 3: Basic Functionality}
 \label{sec:func}
-The prototype implements the workflow from the proposal, end to end:
+The prototype supports the full workflow from our proposal:
 \begin{enumerate}
-\item A user signs in with Google (Fig.~\ref{fig:signin}). The APIs verify
-the ID token's signature and audience, then look up the user's role. Only
-invited users can sign in.
-\item A professor creates a course and registers a YouTube video
-(Fig.~\ref{fig:manage}). The Ingest API checks that the video belongs to the
-professor's own channel and downloads the auto-generated caption track. It
-removes word-timing tags, rolling repeats, and sound tags such as
-\texttt{[Music]}, merges cues into segments of up to about 20\,s, and stores
-them.
-\item A student searches the course. The Search API ranks the matches with
-PostgreSQL full-text search and returns highlighted excerpts. Each result
-plays in an embedded YouTube player at its timestamp (Fig.~\ref{fig:search}).
-\item An admin invites users and sets their roles (Fig.~\ref{fig:admin}).
+\item Users sign in with Google. Only invited users get in
+(Fig.~\ref{fig:signin}).
+\item A professor creates a course and registers a lecture from their own
+YouTube channel (Fig.~\ref{fig:manage}). LI downloads the captions, cleans
+them, and indexes them.
+\item A student searches the course and gets ranked, highlighted excerpts.
+Each excerpt plays the video at the matching moment (Fig.~\ref{fig:search}).
+\item Admins invite users and assign roles (Fig.~\ref{fig:admin}).
 \end{enumerate}
 
-\screenshot{fig-signin.png}{Google sign-in on the production frontend.}{fig:signin}
-\screenshot{fig-manage.png}{Manage page, where professors create courses and register lectures.}{fig:manage}
-\screenshot{fig-search.png}{Search results with highlighted excerpts and the embedded player at the matching timestamp.}{fig:search}
-\screenshot{fig-admin.png}{Admin page: invitations, roles, and the admin and superuser flags (email addresses redacted).}{fig:admin}
+\screenshot{fig-signin.png}{Google sign-in.}{fig:signin}
+\screenshot{fig-manage.png}{The Manage page, where professors create courses and register lectures.}{fig:manage}
+\screenshot{fig-search.png}{Search results with highlighted excerpts and the embedded player at the matching moment.}{fig:search}
+\screenshot{fig-admin.png}{The Admin page for invitations and roles (email addresses redacted).}{fig:admin}
 
-\subsection{Manual testing with real Google accounts}
-Before deploying, we tested against the real Google and YouTube APIs with a
-professor account that owns a channel and a separate student
-account~\cite{yttest}. Table~\ref{tab:cases} lists the cases. On
-2026-10-18 we repeated the main flow in production: sign in, register a
-video, search as a student, and follow the link. All of it passed.
+\textbf{Testing.} We tested the workflow with real Google and YouTube
+accounts, first locally and then in production~\cite{yttest}. The tests
+covered registering a video, searching it as a student, re-registering and
+deleting lectures, and confirming that a professor cannot register someone
+else's video. Over 120 automated tests run on every change.
 
-\begin{table}[!t]
-\caption{Manual test cases (2026-10-18)}
-\label{tab:cases}
-\centering\small
-\begin{tabularx}{\columnwidth}{@{}clX@{}}
-\toprule
-\# & Case & Result \\
-\midrule
-1 & Google sign-in (professor) & Pass \\
-2 & Manage page loads & Pass \\
-3 & Register own video & Pass: 37 segments indexed \\
-4 & Search a spoken word & Pass: hit at 94\,s \\
-5 & Re-register same video & Pass: idempotent, 37 segments \\
-6 & Register a video we do not own & Pass: 403, 2 quota units used \\
-7 & Uploaded captions only & Skipped; unit-tested \\
-8 & Delete a lecture & Pass: segments cascade-deleted \\
-9 & Student view & Pass: no Manage page, search works \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\subsection{Automated tests}
-The latest CI run passed 93 Python tests and 30 frontend tests. The Python
-tests cover caption parsing against a real VTT fixture, the YouTube client,
-routes, invitations, migrations, and query building. The frontend tests
-cover the API client, the pages, and the player. With the 3 Terraform tests,
-the suite has 126 tests.
-
-\subsection{Observations}
-Registering one lecture costs 252 YouTube API quota units, so the default
-quota of 10,000 units allows about 39 registrations a day. Searches use no
-quota. Because segments are up to 20\,s long, a link opens on average about
-10\,s before the word is spoken. Shorter segments would make links more
-precise, at the cost of splitting phrases across segments.
-
-\section{Security Already in Place}
-The full security review is due in Milestone~3. The prototype already has:
-\begin{itemize}
-\item Keyless CI and keyless workloads, through OIDC federation and Workload
-Identity.
-\item The database admin password in Secret Manager.
-\item IAM database users with least-privilege group roles: read-write for
-ingest; read-only for search, except claiming invitations on the
-\texttt{users} table.
-\item Cloud SQL reachable only on a private IP, and a default-deny
-NetworkPolicy.
-\item A Content Security Policy that allows connections only to the API and
-Google Sign-In.
-\item Invite-only sign-in with role-checked endpoints.
-\end{itemize}
-
-\section{Next Steps (Milestone 3)}
-\label{sec:next}
-For Milestone~3, we plan to add:
-\begin{itemize}
-\item A nightly backup CronJob that writes an encrypted \texttt{pg\_dump}
-to immutable, cool-tier Azure Blob Storage.
-\item A Cloud Monitoring dashboard and alerts, built on the structured logs
-the services already emit (\texttt{http\_request},
-\texttt{youtube\_api\_call}).
-\item A written security review.
-\item Developer onboarding documentation.
-\end{itemize}
+\section{Next Steps}
+Milestone~3 adds the remaining pieces from the proposal: nightly encrypted
+database backups to Azure, a monitoring dashboard with alerts, and a
+written security review.
 
 \begin{thebibliography}{9}
 \bibitem{m1} T. Podewil, J. Jubenville, and A. Wojciechowski, ``Lecture Indexer: A multi-cloud service for timestamped keyword search of recorded lectures,'' CS 6030 Milestone 1 proposal, Western Michigan Univ., 2026.
