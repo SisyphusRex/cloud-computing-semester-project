@@ -238,3 +238,12 @@ out/
 
 # vscode
 .vscode/
+# LaTeX build output (the copied PDF next to report/ is committed)
+docs/milestones/m2_prototype_review/report/*.aux
+docs/milestones/m2_prototype_review/report/*.fdb_latexmk
+docs/milestones/m2_prototype_review/report/*.fls
+docs/milestones/m2_prototype_review/report/*.log
+docs/milestones/m2_prototype_review/report/*.out
+docs/milestones/m2_prototype_review/report/*.pdf
+# Unredacted original screenshots (contain email addresses); the redacted copies in figures/ are committed
+docs/milestones/m2_prototype_review/report/figures/liScreenshots/

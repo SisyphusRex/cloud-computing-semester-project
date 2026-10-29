@@ -7,7 +7,7 @@ TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
 .PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
 	frontend-install frontend-dev frontend-test frontend-image k8s-check release-diff cloud-status cloud-pause cloud-resume \
-	cloud-create-superuser cloud-admin
+	cloud-create-superuser cloud-admin report
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-24s %s\n", $$1, $$2}'
@@ -89,3 +89,7 @@ cloud-create-superuser: ## Make EMAIL a superuser in prod (EMAIL=you@example.com
 cloud-admin: ## Run li-admin in prod (ARGS="list", ARGS="add-user EMAIL --role professor")
 	@test -n "$(ARGS)" || { echo 'usage: make cloud-admin ARGS="list"'; exit 2; }
 	scripts/cloud-admin.sh $(ARGS)
+
+report: ## Build the Milestone 2 report PDF (needs pdflatex, latexmk, IEEEtran)
+	cd docs/milestones/m2_prototype_review/report && latexmk -pdf -interaction=nonstopmode -halt-on-error m2-report.tex
+	cp docs/milestones/m2_prototype_review/report/m2-report.pdf docs/milestones/m2_prototype_review/CS6030_F26_PrototypeReview_LectureIndexer.pdf
