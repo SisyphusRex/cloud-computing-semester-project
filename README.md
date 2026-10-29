@@ -58,4 +58,4 @@ API reference and configuration: [services/README.md](services/README.md). Run `
 | `infra/terraform/` | `bootstrap/` (state + CI identities), `modules/`, `envs/prod/` |
 | `.github/workflows/` | `ci.yml` (lint, tests, image builds, manifest and Terraform checks); deploy workflows come with the first deployment |
 | `scripts/` | Dev and cost-control helpers |
-| `docs/` | Proposal, [implementation plan](docs/milestones/m2_prototype_review/implementation-plan.md), [architecture decision records](docs/architecture_decision_records/) (ADRs), runbooks, [security notes](docs/security/) (e.g. [database access](docs/security/database-access.md)), milestone write-ups |
+| `docs/` | Proposal, [implementation plan](docs/milestones/m2_prototype_review/implementation-plan.md), [architecture decision records](docs/architecture_decision_records/) (ADRs), runbooks, [security notes](docs/security/) (e.g. [database access](docs/security/database-access.md)), [how transcript search works](docs/search/transcript-search.md), milestone write-ups |
