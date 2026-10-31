@@ -25,6 +25,11 @@ replacements:
       - select: { kind: ServiceAccount, name: migrate }
         fieldPaths:
           - metadata.annotations.[iam.gke.io/gcp-service-account]
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.BACKUP_GSA }
+    targets:
+      - select: { kind: ServiceAccount, name: backup }
+        fieldPaths:
+          - metadata.annotations.[iam.gke.io/gcp-service-account]
   - source: { kind: ConfigMap, name: li-config, fieldPath: data.API_HOSTNAME }
     targets:
       - select: { kind: Ingress, name: li-api }
@@ -38,3 +43,25 @@ replacements:
         options:
           delimiter: '"'
           index: 1
+      - select: { kind: SecretProviderClass, name: backup }
+        fieldPaths: [spec.parameters.secrets]
+        options:
+          delimiter: '"'
+          index: 1
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.BACKUP_SAS_SECRET_VERSION }
+    targets:
+      - select: { kind: SecretProviderClass, name: backup }
+        fieldPaths: [spec.parameters.secrets]
+        options:
+          delimiter: '"'
+          index: 5
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.BACKUP_AGE_RECIPIENT }
+    targets:
+      - select: { kind: CronJob, name: backup }
+        fieldPaths:
+          - spec.jobTemplate.spec.template.spec.containers.[name=backup].env.[name=BACKUP_AGE_RECIPIENT].value
+  - source: { kind: ConfigMap, name: li-config, fieldPath: data.BACKUP_CONTAINER_URL }
+    targets:
+      - select: { kind: CronJob, name: backup }
+        fieldPaths:
+          - spec.jobTemplate.spec.template.spec.containers.[name=backup].env.[name=BACKUP_CONTAINER_URL].value

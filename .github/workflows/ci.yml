@@ -126,3 +126,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: scripts/test-frontend-image.sh
+
+  backup-image:
+    name: Backup image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/test-backup-image.sh

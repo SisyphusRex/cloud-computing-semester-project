@@ -104,11 +104,12 @@ What it creates:
 | GKE Autopilot cluster `li` | Private nodes on a least-privilege node service account; Secret Manager add-on enabled |
 | Artifact Registry `li` | Docker images; keeps the last 10 versions; nodes pull, `github-deploy` pushes |
 | Cloud SQL `li-pg` | Postgres 16, `db-f1-micro`, private IP only, IAM authentication; database `li` |
-| Database users | `li_admin`, whose password is generated during the run and written to Cloud SQL and Secret Manager `db-admin-password` only (readable by the migrate workload); it is never stored in Terraform state. IAM users for `li-ingest` and `li-search` |
-| Service accounts | `li-ingest`, `li-search`, `li-migrate`, each bound through Workload Identity to the Kubernetes service account of the same name in namespace `li` |
+| Database users | `li_admin`, whose password is generated during the run and written to Cloud SQL and Secret Manager `db-admin-password` only (readable by the migrate and backup workloads); it is never stored in Terraform state. IAM users for `li-ingest` and `li-search` |
+| Service accounts | `li-ingest`, `li-search`, `li-migrate`, `li-backup`, each bound through Workload Identity to the Kubernetes service account of the same name in namespace `li` |
 | Global IP `li-api` | The API is served at `<ip-with-dashes>.sslip.io` (output `api_hostname`), which is enough for a Google-managed certificate without buying a domain |
 | Cloud Run `li-frontend` | The React app served by nginx (output `frontend_url`); public, scales 0–2 instances, runs as service account `li-frontend` with no roles. Starts with Google's placeholder image until the frontend deploy runs; `github-deploy` may deploy this service only |
-| Azure `rg-li-prod` | In `northcentralus`; holds the backup storage from step 5 of the plan |
+| Azure `rg-li-prod` | In `northcentralus`; empty. Backups are in `rg-li-backup`, from `bootstrap/`, so destroying this environment leaves them ([backup runbook](backup-and-restore.md)) |
+| Secret `backup-sas` | The upload credential for backups. Starts empty: `make cloud-backup-sas` adds the value, so it never reaches Terraform state |
 
 Check the configuration without credentials: `terraform -chdir=infra/terraform/envs/prod test` runs it against mocked providers.
 
@@ -152,11 +153,11 @@ The script is `scripts/cloud-power.sh` (`DRY_RUN=1` prints the commands without 
 Things to know:
 
 - **Terraform doesn't touch the Cloud SQL on/off state** (`ignore_changes` on `activation_policy`), so a `terraform apply`, including CI's, never restarts a paused database. Terraform still creates the instance running.
-- **Deploys skip while paused** (step 8): they finish green with a warning and change nothing. After `make cloud-resume`, re-run the release: **Actions → Release → Run workflow** on `main`, or `gh workflow run release.yml --ref main`.
+- **Releases skip while paused** (step 8): they finish green with a warning and change nothing. A rollback **fails** instead, because nothing was rolled back. After `make cloud-resume`, re-run the release: **Actions → Release → Run workflow** on `main`, or `gh workflow run release.yml --ref main`.
 - **The Deployments have no `replicas` field**, and an HPA leaves a Deployment at 0 replicas alone, so pods stay at 0 until `make cloud-resume` scales them back.
 - **Resume re-applies only the Ingress** (label `app.kubernetes.io/component=ingress`). Re-applying the whole overlay would reset the image tags to the committed placeholders.
 - The ManagedCertificate stays in the cluster while paused. If the API answers with a certificate error right after a resume, wait for the load balancer to finish provisioning (up to ~30 minutes).
-- A paused Cloud SQL instance can't be backed up, so the nightly backup CronJob (step 5) fails while paused.
+- **`make cloud-pause` backs up the database first,** and stops with nothing changed if that fails. A paused Cloud SQL instance can't be backed up, so the nightly CronJob is suspended until `make cloud-resume`. `make cloud-pause SKIP_BACKUP=1` skips the backup, for example when pausing because backups are broken.
 
 ### When idle for longer: destroy
 
@@ -166,7 +167,8 @@ terraform -chdir=infra/terraform/envs/prod destroy   # bootstrap and its state s
 
 This brings the GCP cost to $0, but:
 
-- **It deletes the database.** Make sure the nightly backup (step 5 of the plan) has run, or the data is disposable.
+- **It deletes the database.** Run `make cloud-backup` first, or make sure the data is disposable. The backups stay in Azure, in `rg-li-backup` ([backup runbook](backup-and-restore.md)).
+- **`backup-sas` comes back empty** after a re-create. Run `make cloud-backup-sas` before the next release.
 - **It releases the IP, which changes the API hostname.** After re-creating, update `values.env` and push to `main`; both deploys re-run because `values.env` changed, and the frontend build picks up the new API origin. The Cloud Run URL can change too when the service is re-created: update `CORS_ORIGINS` and the OAuth client's origins.
 
 ### Budget alert

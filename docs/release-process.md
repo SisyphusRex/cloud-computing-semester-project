@@ -15,7 +15,7 @@ push to main
         ▼  ONE approval in the prod environment
   release   1. terraform apply of exactly that plan     (only if it has changes)
             2. Cloud SQL backup                          (only if there are new migrations)
-            3. build + push ingest, search, frontend images, tagged with the commit SHA
+            3. build + push ingest, search, backup, frontend images, tagged with the commit SHA
             4. migrations (Job)
             5. roll out ingest + search                  → automatic undo if a rollout fails
             6. frontend to Cloud Run with no traffic, check it, then switch traffic
@@ -34,7 +34,7 @@ push to main
 Each successful release tags its commit `prod-YYYY-MM-DD.N` (for example `prod-2026-10-18.1`) and creates a GitHub Release.
 
 - **Review base:** the next review sheet lists everything since the latest tag.
-- **Rollback target:** every tagged commit has all three images in Artifact Registry, so `rollback.yml` can return to it.
+- **Rollback target:** every tagged commit has its images in Artifact Registry, so `rollback.yml` can return to it. A rollback to a tag from before backups leaves the backup CronJob as it is.
 - **Record:** the Releases page shows what was in production and when, which helps with the milestone reports.
 
 A tag ruleset protects `prod-*` tags from being moved or deleted. Milestone tags (`m2`, `m3`) can be added by hand on top.
@@ -113,7 +113,7 @@ A rollback (below) redeploys old code but keeps the database as it is. So every 
 | What's wrong | What to do |
 |---|---|
 | **Bad code** (API or frontend) | Run the [rollback](#on-the-website-no-gh-needed) with the last good `prod-*` tag and approve it, or use `gh workflow run rollback.yml --ref main -f tag=<tag>`. Then **revert the bad commit on `development` and merge**, or the next release ships it again |
-| **Bad data** (from a migration) | Restore the backup the release took, then run the rollback as above. **Restoring overwrites the whole database; anything written since the backup is lost.** The backup ID is in the release summary. Use the Cloud Console (**SQL → li-pg → Backups**, pick "before release …", then **Restore** to `li-pg`) or `gcloud sql backups restore <id> --restore-instance li-pg` |
+| **Bad data** (from a migration) | Restore the backup the release took (the [Azure backups](runbooks/backup-and-restore.md) are the fallback), then run the rollback as above. **Restoring overwrites the whole database; anything written since the backup is lost.** The backup ID is in the release summary. Use the Cloud Console (**SQL → li-pg → Backups**, pick "before release …", then **Restore** to `li-pg`) or `gcloud sql backups restore <id> --restore-instance li-pg` |
 | **Bad infrastructure** (Terraform) | Revert the commit on `development` and merge; the next release plans the reverse change. Check that plan especially carefully. A deleted stateful resource (the database) can only come back from a backup |
 
 The rollback redeploys that tag's images and config, with no migrations and no Terraform, then checks the API through the load balancer. It **fails** if the environment is paused (nothing was rolled back; run `make cloud-resume` and start it again), if the tag's images are gone, or if the API doesn't answer afterwards. Artifact Registry keeps the newest 10 versions of each image, plus anything under 30 days old, so recent tags are always available.
