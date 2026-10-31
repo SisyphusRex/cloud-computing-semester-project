@@ -5,23 +5,23 @@ import ingest
 
 pytestmark = pytest.mark.db
 
-ROOT = "root@example.edu"  # superuser
 ADMIN = "admin@example.edu"
+OTHER_ADMIN = "admin2@example.edu"
 PROF = "prof@example.edu"
 STUDENT = "student@example.edu"
 
 
 @pytest.fixture
 def client(make_client, db_settings, invite):
-    invite(ROOT, "professor", superuser=True)
     invite(ADMIN, "student", admin=True)
+    invite(OTHER_ADMIN, "professor", admin=True)
     invite(PROF, "professor")
     invite(STUDENT)
     return make_client(ingest.create_app, db_settings)
 
 
 def _id(client, auth, email):
-    users = client.get("/ingest/admin/users", headers=auth(ROOT)).json["users"]
+    users = client.get("/ingest/admin/users", headers=auth(ADMIN)).json["users"]
     return next(u["id"] for u in users if u["email"] == email)
 
 
@@ -33,14 +33,9 @@ def _audit(database_url):
         ).fetchall()
 
 
-def test_me_reports_role_and_flags(client, auth):
-    me = client.get("/ingest/me", headers=auth(ROOT)).json
-    assert (me["email"], me["role"], me["is_admin"], me["is_superuser"]) == (
-        ROOT,
-        "professor",
-        True,
-        True,
-    )
+def test_me_reports_role_and_admin_flag(client, auth):
+    me = client.get("/ingest/me", headers=auth(OTHER_ADMIN)).json
+    assert (me["email"], me["role"], me["is_admin"]) == (OTHER_ADMIN, "professor", True)
     assert client.get("/ingest/me", headers=auth(STUDENT)).json["is_admin"] is False
 
 
@@ -95,37 +90,77 @@ def test_admin_changes_role_and_disables(client, auth, database_url):
     assert detail == {"is_active": {"from": True, "to": False}}
 
 
-def test_only_superusers_grant_admin(client, auth):
+def test_admin_grants_and_revokes_admin(client, auth):
     prof = _id(client, auth, PROF)
-    grant = {"is_admin": True}
-    assert (
-        client.patch(f"/ingest/admin/users/{prof}", json=grant, headers=auth(ADMIN)).status_code
-        == 403
-    )
-    resp = client.patch(f"/ingest/admin/users/{prof}", json=grant, headers=auth(ROOT))
+    resp = client.patch(f"/ingest/admin/users/{prof}", json={"is_admin": True}, headers=auth(ADMIN))
     assert resp.json["is_admin"] is True
     assert client.get("/ingest/admin/users", headers=auth(PROF)).status_code == 200
 
+    client.patch(f"/ingest/admin/users/{prof}", json={"is_admin": False}, headers=auth(ADMIN))
+    assert client.get("/ingest/admin/users", headers=auth(PROF)).status_code == 403
 
-def test_admins_cannot_change_admins_superusers_or_themselves(client, auth):
-    admin_id, root_id = _id(client, auth, ADMIN), _id(client, auth, ROOT)
-    other = "admin2@example.edu"
-    client.post(
-        "/ingest/admin/users", json={"emails": [other], "role": "student"}, headers=auth(ROOT)
+
+def test_admin_changes_and_disables_another_admin(client, auth):
+    other = _id(client, auth, OTHER_ADMIN)
+    resp = client.patch(
+        f"/ingest/admin/users/{other}", json={"role": "student"}, headers=auth(ADMIN)
     )
-    client.patch(
-        f"/ingest/admin/users/{_id(client, auth, other)}",
-        json={"is_admin": True},
-        headers=auth(ROOT),
+    assert resp.json["role"] == "student"
+
+    client.patch(f"/ingest/admin/users/{other}", json={"is_active": False}, headers=auth(ADMIN))
+    assert client.get("/ingest/me", headers=auth(OTHER_ADMIN)).json["error"] == "account_disabled"
+
+
+def test_admin_switches_their_own_role(client, auth, database_url):
+    me = _id(client, auth, ADMIN)
+    assert client.get("/ingest/courses", headers=auth(ADMIN)).status_code == 403
+
+    resp = client.patch(
+        f"/ingest/admin/users/{me}", json={"role": "professor"}, headers=auth(ADMIN)
     )
-    disable = {"is_active": False}
-    for target, actor in [
-        (_id(client, auth, other), ADMIN),  # another admin
-        (admin_id, ADMIN),  # themselves
-        (root_id, ROOT),  # superuser, even by a superuser
-    ]:
-        resp = client.patch(f"/ingest/admin/users/{target}", json=disable, headers=auth(actor))
-        assert resp.status_code == 403, (target, actor)
+    assert resp.json["role"] == "professor"
+    assert client.get("/ingest/courses", headers=auth(ADMIN)).status_code == 200
+
+    action, detail, actor = _audit(database_url)[-1]
+    assert (action, actor) == ("update", ADMIN)
+    assert detail == {"role": {"from": "student", "to": "professor"}}
+
+    client.patch(f"/ingest/admin/users/{me}", json={"role": "student"}, headers=auth(ADMIN))
+    assert client.get("/ingest/courses", headers=auth(ADMIN)).status_code == 403
+    assert client.get("/ingest/admin/users", headers=auth(ADMIN)).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"is_active": False},
+        {"is_admin": False},
+        {"role": "professor", "is_active": False},
+        {"role": "professor", "is_admin": False},
+    ],
+)
+def test_admins_cannot_disable_or_demote_themselves(client, auth, changes):
+    me = _id(client, auth, ADMIN)
+    resp = client.patch(f"/ingest/admin/users/{me}", json=changes, headers=auth(ADMIN))
+    assert resp.status_code == 403
+    assert client.get("/ingest/me", headers=auth(ADMIN)).json["role"] == "student"
+
+
+def test_admin_revokes_admin_from_a_former_superuser(client, auth, database_url):
+    other = _id(client, auth, OTHER_ADMIN)
+    with psycopg.connect(database_url) as conn:
+        conn.execute("UPDATE users SET is_superuser = true WHERE id = %s", (other,))
+    resp = client.patch(
+        f"/ingest/admin/users/{other}", json={"is_admin": False}, headers=auth(ADMIN)
+    )
+    assert resp.status_code == 200, resp.json
+    assert client.get("/ingest/admin/users", headers=auth(OTHER_ADMIN)).status_code == 403
+
+
+def test_admin_cancels_an_admins_invitation(client, auth, invite):
+    invite("new-admin@example.edu", admin=True)
+    target = _id(client, auth, "new-admin@example.edu")
+    assert client.delete(f"/ingest/admin/users/{target}", headers=auth(ADMIN)).status_code == 204
 
 
 def test_delete_only_unclaimed_invitations(client, auth, database_url):
@@ -144,5 +179,5 @@ def test_delete_only_unclaimed_invitations(client, auth, database_url):
 
 
 def test_unknown_user_is_404(client, auth):
-    resp = client.patch("/ingest/admin/users/999999", json={"role": "student"}, headers=auth(ROOT))
+    resp = client.patch("/ingest/admin/users/999999", json={"role": "student"}, headers=auth(ADMIN))
     assert resp.status_code == 404

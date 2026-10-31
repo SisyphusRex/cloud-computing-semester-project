@@ -1,6 +1,6 @@
 # Local stack: Postgres, migrations, and both APIs.
 # Uses dev auth ("Authorization: Bearer dev:<email>"); never reuse these settings in GKE.
-# Sign-in is invite-only; `seed` invites prof@example.edu (professor, superuser)
+# Sign-in is invite-only; `seed` invites prof@example.edu (professor, admin)
 # and student@example.edu.
 name: lecture-indexer
 
@@ -39,14 +39,15 @@ services:
       db:
         condition: service_healthy
 
-  # Idempotent, so it runs on every `up` and never demotes anyone.
+  # Idempotent, so it runs on every `up`. That also puts these two accounts back
+  # on the roles below, undoing any local role switch.
   seed:
     build: *ingest-build
     image: li-ingest:dev
     entrypoint: ["/bin/sh", "-c"]
     command:
       - li-admin add-user prof@example.edu --role professor &&
-        li-admin create-superuser prof@example.edu &&
+        li-admin create-admin prof@example.edu &&
         li-admin add-user student@example.edu --role student
     environment: *api-env
     depends_on:

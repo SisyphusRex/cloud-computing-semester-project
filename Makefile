@@ -7,7 +7,7 @@ TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
 .PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
 	frontend-install frontend-dev frontend-test frontend-image k8s-check release-diff cloud-status cloud-pause cloud-resume \
-	cloud-create-superuser cloud-admin report
+	cloud-create-admin cloud-admin report
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-24s %s\n", $$1, $$2}'
@@ -82,9 +82,9 @@ cloud-pause: ## Stop billable resources between test sessions (keeps data and th
 cloud-resume: ## Start the deployed environment again
 	scripts/cloud-power.sh resume
 
-cloud-create-superuser: ## Make EMAIL a superuser in prod (EMAIL=you@example.com); see ADR 0002
-	@test -n "$(EMAIL)" || { echo 'usage: make cloud-create-superuser EMAIL=you@example.com'; exit 2; }
-	scripts/cloud-admin.sh create-superuser "$(EMAIL)"
+cloud-create-admin: ## Make EMAIL an admin in prod (EMAIL=you@example.com); see ADR 0003
+	@test -n "$(EMAIL)" || { echo 'usage: make cloud-create-admin EMAIL=you@example.com'; exit 2; }
+	scripts/cloud-admin.sh create-admin "$(EMAIL)"
 
 cloud-admin: ## Run li-admin in prod (ARGS="list", ARGS="add-user EMAIL --role professor")
 	@test -n "$(ARGS)" || { echo 'usage: make cloud-admin ARGS="list"'; exit 2; }

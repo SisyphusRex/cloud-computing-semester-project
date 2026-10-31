@@ -5,8 +5,9 @@ import type { AdminUser, InviteResult, Me, UserChanges, UserRole } from "../api/
 import { ErrorMessage } from "../components/ErrorMessage";
 
 /**
- * Invite users and manage their roles (ADR 0002). Admins manage students and
- * professors; only superusers grant admin. The API enforces the same rules.
+ * Invite users and manage their roles (ADRs 0002 and 0003). Admins manage
+ * everyone, but can only change their own role, not disable themselves or drop
+ * their own admin flag. The API enforces the same rules.
  */
 export function AdminPage() {
   const { api, me } = useApi();
@@ -89,7 +90,7 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
 }
 
 function UserTable({ users, me, onChange }: { users: AdminUser[]; me: Me; onChange: () => void }) {
-  const { api } = useApi();
+  const { api, refreshMe } = useApi();
   const [error, setError] = useState<unknown>(null);
 
   async function run(action: () => Promise<unknown>) {
@@ -101,7 +102,11 @@ function UserTable({ users, me, onChange }: { users: AdminUser[]; me: Me; onChan
       setError(e);
     }
   }
-  const update = (user: AdminUser, changes: UserChanges) => run(() => api.updateUser(user.id, changes));
+  const update = (user: AdminUser, changes: UserChanges) =>
+    run(async () => {
+      await api.updateUser(user.id, changes);
+      if (user.id === me.id) await refreshMe();
+    });
 
   return (
     <div className="card">
@@ -113,7 +118,6 @@ function UserTable({ users, me, onChange }: { users: AdminUser[]; me: Me; onChan
             <th>Status</th>
             <th>Role</th>
             <th>Admin</th>
-            <th title="Superusers are also admins, and can grant admin. Set only with li-admin.">Superuser</th>
             <th>
               <span className="visually-hidden">Actions</span>
             </th>
@@ -133,7 +137,6 @@ function UserTable({ users, me, onChange }: { users: AdminUser[]; me: Me; onChan
                   <select
                     aria-label={`Role for ${user.email}`}
                     value={user.role}
-                    disabled={!editable}
                     onChange={(e) => update(user, { role: e.target.value as UserRole })}
                   >
                     <option value="student">Student</option>
@@ -141,26 +144,13 @@ function UserTable({ users, me, onChange }: { users: AdminUser[]; me: Me; onChan
                   </select>
                 </td>
                 <td>
-                  {/* A superuser is always an admin, so their box stays ticked and locked. */}
                   <input
                     type="checkbox"
                     aria-label={`Admin: ${user.email}`}
                     checked={user.is_admin}
-                    disabled={!editable || !me.is_superuser}
+                    disabled={!editable}
                     onChange={(e) => update(user, { is_admin: e.target.checked })}
                   />
-                </td>
-                <td>
-                  {/* Read-only: only li-admin makes superusers (ADR 0002). */}
-                  {user.is_superuser ? (
-                    <span role="img" aria-label={`Superuser: ${user.email}`} title="Superuser (set with li-admin)">
-                      ✓
-                    </span>
-                  ) : (
-                    <span className="muted" aria-hidden="true">
-                      —
-                    </span>
-                  )}
                 </td>
                 <td>
                   {editable &&
@@ -183,7 +173,7 @@ function UserTable({ users, me, onChange }: { users: AdminUser[]; me: Me; onChan
   );
 }
 
-/** Mirrors the API: not yourself, never a superuser, and admins only if you're a superuser. */
+/** Mirrors the API: everything but the role is locked on your own row. */
 function canEdit(me: Me, user: AdminUser): boolean {
-  return user.id !== me.id && !user.is_superuser && (!user.is_admin || me.is_superuser);
+  return user.id !== me.id;
 }

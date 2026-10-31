@@ -190,10 +190,10 @@ The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused 
 2. Fill `deploy/k8s/overlays/prod/values/values.env` from `terraform output` (each line names its output; `CORS_ORIGINS` is `frontend_url`), plus `GOOGLE_CLIENT_ID`. The release refuses to run while it still has placeholders.
 3. Add the `frontend_url` output as an authorized JavaScript origin on the OAuth client (step 5).
 4. Merge into `main`, read the review sheet and the plan (it should show no changes), and approve. The Google-managed certificate takes 15–60 minutes after the first rollout, so on the first release the API check only warns.
-5. **Create the first superuser.** Sign-in is invite-only ([ADR 0002](../architecture_decision_records/0002-invite-only-users-and-admin-roles.md)), so nobody can sign in yet:
+5. **Create the first admin.** Sign-in is invite-only ([ADR 0002](../architecture_decision_records/0002-invite-only-users-and-admin-roles.md)), so nobody can sign in yet:
 
    ```sh
-   make cloud-create-superuser EMAIL=you@gmail.com   # the Google account you'll sign in with
+   make cloud-create-admin EMAIL=you@gmail.com   # the Google account you'll sign in with
    ```
 
    It runs `li-admin` as a one-off Job with the database-admin credentials (`scripts/cloud-admin.sh`), in the deployed ingest image; the environment must be running. Then sign in, open **Admin**, and invite the rest of the team (tick *Admin* for anyone who should invite others). `make cloud-admin ARGS=list` shows every account.

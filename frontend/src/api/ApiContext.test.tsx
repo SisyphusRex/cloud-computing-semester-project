@@ -42,7 +42,7 @@ afterEach(() => {
 describe("<ApiProvider>", () => {
   it("reads the role and flags from /ingest/me", async () => {
     const fetchMock = renderWithFetch(
-      json(200, { id: 1, email: "a@x", name: null, role: "professor", is_admin: true, is_superuser: false }),
+      json(200, { id: 1, email: "a@x", name: null, role: "professor", is_admin: true }),
     );
     expect(await screen.findByText("role=professor admin=true error=-")).toBeInTheDocument();
     expect(fetchMock.mock.calls[0][0]).toMatch(/\/ingest\/me$/);

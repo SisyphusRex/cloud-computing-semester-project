@@ -49,12 +49,12 @@ def database_url():
 
 @pytest.fixture
 def invite(database_url):
-    """`invite(email, role, admin=, superuser=)` -> the user row. Sign-in is
-    invite-only, so tests invite each account before using it."""
+    """`invite(email, role, admin=)` -> the user row. Sign-in is invite-only, so
+    tests invite each account before using it."""
 
-    def _invite(email, role="student", *, admin=False, superuser=False):
+    def _invite(email, role="student", *, admin=False):
         with psycopg.connect(database_url, row_factory=dict_row) as conn:
-            return add_user(conn, email, role, admin=admin, superuser=superuser)
+            return add_user(conn, email, role, admin=admin)
 
     return _invite
 

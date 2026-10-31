@@ -39,7 +39,7 @@ function DevSignIn() {
       <h2>Development sign-in</h2>
       <p className="muted">
         The APIs must run with LI_DEV_AUTH=1. Sign-in is invite-only: docker compose invites
-        these two accounts, and prof@example.edu is a superuser who can invite others.
+        these two accounts, and prof@example.edu is an admin who can invite others.
       </p>
       <div className="row">
         {DEV_ACCOUNTS.map((account) => (

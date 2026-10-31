@@ -10,6 +10,12 @@ Open work that isn't scheduled in the [implementation plan](milestones/m2_protot
 
 Do both in the next release after it, once it's clear no rollback is needed.
 
+## Drop `users.is_superuser` (contract step)
+
+[ADR 0003](architecture_decision_records/0003-merge-superuser-into-admin.md) merged superuser into admin. The code no longer uses the column, but the previous release still selects it, so it stays for one release. In the release after, once it's clear no rollback is needed:
+- Add a migration: `ALTER TABLE users DROP COLUMN is_superuser`.
+- Remove `test_admin_revokes_admin_from_a_former_superuser` from `services/ingest/tests/test_admin_routes.py`; it sets the column directly.
+
 ## Write an onboarding guide for new developers
 
 **Today:** what a new teammate needs is spread across the README, [local-development.md](local-development.md), the [runbook](runbooks/bootstrap.md), [release-process.md](release-process.md) and the [implementation plan](milestones/m2_prototype_review/implementation-plan.md), with no starting point or reading order. The docs were also reorganized recently (`docs/milestones/`), so older links and habits point at old places.
@@ -72,7 +78,7 @@ Before writing it, check the course page for a required format or length, and ta
 
 ## Give teammates access to the clouds and the app
 
-**Today:** only the project owner can use the Google Cloud and Azure accounts, and in the app, only the owner will be a superuser once [ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) is released. Teammates can't pause or resume the environment, read logs, check costs, or manage users.
+**Today:** only the project owner can use the Google Cloud and Azure accounts, and in the app, only the owner will be an admin once [ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) is released. Teammates can't pause or resume the environment, read logs, check costs, or manage users.
 
 Keep the teammates' email addresses **out of this repository** (it's public; see ADR 0002). Use the team's own contact list, and grant access by hand in each console.
 
@@ -81,54 +87,27 @@ Keep the teammates' email addresses **out of this repository** (it's public; see
    - Otherwise, enough for `make cloud-*`, the logs and the [database access guide](security/database-access.md): **Editor**, plus **Secret Manager Secret Accessor** on the `db-admin-password` secret only. Editor alone can't read secret values. Check that `make cloud-pause` / `cloud-resume` work for them; they change Cloud SQL and the cluster.
    - Also add each one as a **test user** on the OAuth consent screen (**APIs & Services → OAuth consent screen → Audience**). While the app is in testing mode, Google refuses sign-in for anyone else.
 2. **Azure** (subscription with `rg-li-prod`): invite each teammate as a guest (**Microsoft Entra ID → Users → Invite external user**). Then assign a role on the subscription or on `rg-li-prod` (**Access control (IAM) → Add role assignment**): **Contributor** to manage resources, or **Reader** to look only. Azure for Students may restrict guest invitations; if it does, note what works here.
-3. **App superusers**, after the ADR 0002 release, one per teammate:
+3. **App admins**, after the ADR 0002 release, one per teammate:
    ```sh
-   make cloud-create-superuser EMAIL=<their Google email>
+   make cloud-create-admin EMAIL=<their Google email>
    ```
-   They then sign in with that Google account. Add `make cloud-admin ARGS="add-user <email> --role professor"` for anyone who also needs to create courses: superuser doesn't include professor.
+   They then sign in with that Google account. Admin doesn't include professor: anyone who needs to create courses switches with **Your role** in the top bar. Once one admin exists, the rest can also be granted on the Admin page.
 4. **GitHub:** collaborator access, and `prod` environment reviewer for anyone who will approve releases ([release-process.md](release-process.md)).
 
 Afterwards, have each teammate confirm with `make cloud-status` and a sign-in to the app. Record who has which access somewhere outside the repo, so it can be revoked at the end of the semester.
 
-## Revoke superusers with `li-admin`
+## Revoke admins with `li-admin`
 
-**Today:** `li-admin create-superuser` is the only way to grant superuser, and the app deliberately can't change superusers ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md)). Nothing removes the flag except a hand-written SQL `UPDATE` as `li_admin` ([database access guide](security/database-access.md)). That writes no `user_audit` row, so the change leaves no record.
+**Today:** an admin can revoke another admin on the Admin page ([ADR 0003](architecture_decision_records/0003-merge-superuser-into-admin.md)), but `li-admin` can only grant. If only one admin is left, or nobody can sign in, removing the flag takes a hand-written SQL `UPDATE` as `li_admin` ([database access guide](security/database-access.md)). That writes no `user_audit` row, so the change leaves no record.
 
-**Goal:** `li-admin revoke-superuser EMAIL [--keep-admin]` in [`admin.py`](../services/common/src/li_common/admin.py):
-- It clears `is_superuser`, and also `is_admin` unless `--keep-admin` is given. The database check (superuser implies admin) allows either.
-- It goes through `users.update(..., actor_id=None)`, so the change is audited like the other CLI commands.
-- It refuses to remove the **last** superuser, since nobody could grant admin after that. `--force` overrides this.
+**Goal:** `li-admin revoke-admin EMAIL` in [`admin.py`](../services/common/src/li_common/admin.py):
+- It clears `is_admin` through `users.update(..., actor_id=None)`, so the change is audited like the other CLI commands.
+- It refuses to remove the **last** admin, since nobody could grant admin from the app after that. `--force` overrides this.
 - It's safe to re-run, and errors clearly on an unknown email.
-- In prod: `make cloud-admin ARGS="revoke-superuser EMAIL"`. `scripts/cloud-admin.sh` passes the arguments through, so no new script is needed.
-- Tests in `services/common/tests/test_admin_cli.py`: revoke, `--keep-admin`, the last-superuser guard, and the audit row.
+- In prod: `make cloud-admin ARGS="revoke-admin EMAIL"`. `scripts/cloud-admin.sh` passes the arguments through, so no new script is needed.
+- Tests in `services/common/tests/test_admin_cli.py`: revoke, the last-admin guard, and the audit row.
 - Docs: the `li-admin` list in `services/README.md`, and the database access guide, which should point to this command instead of SQL.
-- Optionally, also `remove-admin` and `disable`, so the CLI can undo everything it can grant.
-
-## Let superusers change their own role
-
-**Today:** on the Admin page, nobody can change their own account, and nobody can change a superuser's account at all ([`admin.py`](../services/ingest/src/ingest/admin.py) `update_user`, mirrored by `canEdit` in [`AdminPage.tsx`](../frontend/src/pages/AdminPage.tsx)). A superuser who wants to switch between student and professor has to run `make cloud-admin ARGS="add-user EMAIL --role professor"`.
-
-Those rules are broader than they need to be for the **role**:
-- **It can't lock anyone out.** Access to the Admin page comes from the `is_admin`/`is_superuser` flags; the role only decides who can create courses.
-- **It isn't an escalation.** A superuser can already invite any account as a professor.
-- **It's still audited,** with the same user as actor and target.
-
-What needs protecting is the superuser **flag** (CLI only, so a stolen admin session can't change it) and disabling yourself or dropping your own admin flag (a real lockout).
-
-**Goal:**
-
-| Change | Today | After |
-|---|---|---|
-| A superuser changes **their own role** | blocked | allowed |
-| A superuser changes **another superuser's role** | blocked | allowed |
-| Disabling yourself, or changing your own admin flag | blocked | still blocked |
-| Changing a superuser's flags, or disabling one | blocked | still blocked (CLI only) |
-
-- **API:** in `update_user`, allow a role-only change (no `is_active`/`is_admin` in the body) when the caller is a superuser, even for their own row or another superuser's.
-- **Frontend:** split `canEdit` into "can change role" and "can change flags or disable", so the role dropdown unlocks while the rest of the row stays locked.
-- **Tests:** add to `services/ingest/tests/test_admin_routes.py` and `AdminPage.test.tsx`: a superuser changes their own role and another superuser's; still can't disable themselves or another superuser.
-- **Docs:** the rules in [ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) and `services/README.md`.
-- **To decide:** whether admins who aren't superusers may also change their own role. That's harmless for the same reason (they can already invite anyone as a professor), but it's left out for now to keep the change small.
+- Optionally, also `disable`, so the CLI can undo everything it can grant.
 
 ## Optional
 

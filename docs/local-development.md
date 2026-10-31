@@ -12,7 +12,7 @@ How to run all of Lecture Indexer on your own machine: Postgres, the Ingest and 
 | Search API (Flask) | Docker container (`search`) | http://localhost:8082 |
 | Frontend (React + Vite) | Node on your machine | http://localhost:5173 |
 
-The frontend's dev server forwards `/ingest/*` to `:8081` and `/search/*` to `:8082`, so the browser only ever talks to `localhost:5173`. Locally the APIs accept **dev sign-in** (`Authorization: Bearer dev:<email>`) instead of Google. Sign-in is invite-only ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md)): docker compose invites `prof@example.edu` (professor and superuser) and `student@example.edu`; any other email gets "not invited" until someone invites it.
+The frontend's dev server forwards `/ingest/*` to `:8081` and `/search/*` to `:8082`, so the browser only ever talks to `localhost:5173`. Locally the APIs accept **dev sign-in** (`Authorization: Bearer dev:<email>`) instead of Google. Sign-in is invite-only ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md)): docker compose invites `prof@example.edu` (professor and admin) and `student@example.edu`; any other email gets "not invited" until someone invites it.
 
 ## Prerequisites
 
@@ -176,7 +176,7 @@ cd services
 export DATABASE_URL=postgresql://li:li@localhost:55432/li   # once per terminal
 
 uv run pytest ingest/tests/test_admin_routes.py                 # one file
-uv run pytest ingest/tests/test_admin_routes.py::test_only_superusers_grant_admin   # one test
+uv run pytest ingest/tests/test_admin_routes.py::test_admin_grants_and_revokes_admin   # one test
 uv run pytest -k invite                                          # tests whose name contains "invite"
 uv run pytest -x --lf                                            # rerun only last run's failures, stop at the first
 ```
@@ -188,13 +188,13 @@ Frontend tests don't need a database:
 ```sh
 cd frontend
 npx vitest run src/pages/AdminPage.test.tsx     # one file
-npx vitest run -t "grant admin"                 # tests whose name matches
+npx vitest run -t "own row"                     # tests whose name matches
 npx vitest                                      # watch mode: reruns on save
 ```
 
 ### Check sign-in and roles by hand
 
-The automated tests cover the rules. Before merging a change to sign-in, roles or the Admin page, also click through it once ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) describes the model). Start the stack and the frontend ([Run the app](#run-the-app)), open http://localhost:5173, and sign in as each account in turn. To switch accounts, use **Sign out**.
+The automated tests cover the rules. Before merging a change to sign-in, roles or the Admin page, also click through it once ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) and [ADR 0003](architecture_decision_records/0003-merge-superuser-into-admin.md) describe the model). Start the stack and the frontend ([Run the app](#run-the-app)), open http://localhost:5173, and sign in as each account in turn. To switch accounts, use **Sign out**.
 
 | Sign in as | Do | Expect |
 |---|---|---|
@@ -203,7 +203,8 @@ The automated tests cover the rules. Before merging a change to sign-in, roles o
 | `prof@example.edu` | On **Admin**, invite `new@example.edu` as Professor | "Invited 1."; the row shows `invited` |
 | `new@example.edu` | Sign in, open **Manage** | You can create a course |
 | `prof@example.edu` | On **Admin**, set `new@example.edu` to Student, and tick its *Admin* box | Its row now shows `active` (the invitation was claimed); both changes save |
-| `new@example.edu` | Open **Manage**, then **Admin** | "Only professors can manage courses"; **Admin** works, but the *Admin* boxes are disabled (only superusers grant admin) |
+| `new@example.edu` | Open **Manage**, then **Admin** | "Only professors can manage courses"; **Admin** works, but on your own row only the role can be changed |
+| `new@example.edu` | Set **Your role** in the top bar to professor, then back to student | **Manage** appears and disappears; **Admin** stays |
 | `prof@example.edu` | **Disable** `student@example.edu` | The row shows `disabled` |
 | `student@example.edu` | Sign in | "Account disabled". Afterwards, sign back in as `prof@example.edu` and **Enable** it again |
 

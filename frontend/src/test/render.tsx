@@ -34,15 +34,19 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
 interface Options {
   api: Api;
   role?: Role;
-  /** Defaults to a user with `role` and no admin flags. */
+  /** Defaults to a user with `role` who isn't an admin. */
   me?: Partial<Me>;
+  refreshMe?: () => Promise<void>;
   auth?: Partial<AuthValue>;
   path: string;
   url: string;
 }
 
 /** Render `element` at route `path`, starting at `url`, with fake providers. */
-export function renderPage(element: ReactNode, { api, role = "student", me, auth, path, url }: Options) {
+export function renderPage(
+  element: ReactNode,
+  { api, role = "student", me, refreshMe = vi.fn(() => Promise.resolve()), auth, path, url }: Options,
+) {
   const authValue: AuthValue = {
     session: devSession("someone@example.edu"),
     signIn: vi.fn(),
@@ -52,7 +56,9 @@ export function renderPage(element: ReactNode, { api, role = "student", me, auth
   };
   return render(
     <AuthContext.Provider value={authValue}>
-      <ApiContext.Provider value={{ api, role, me: fakeMe(role, me), accessError: null }}>
+      <ApiContext.Provider
+        value={{ api, role, me: fakeMe(role, me), refreshMe, accessError: null }}
+      >
         <MemoryRouter initialEntries={[url]}>
           <Routes>
             <Route path={path} element={element} />
@@ -71,7 +77,6 @@ function fakeMe(role: Role, overrides: Partial<Me> = {}): Me | null {
     name: "Someone",
     role,
     is_admin: false,
-    is_superuser: false,
     ...overrides,
   };
 }

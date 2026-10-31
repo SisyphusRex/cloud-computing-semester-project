@@ -25,10 +25,10 @@ Locally, `LI_DEV_AUTH=1` accepts `Authorization: Bearer dev:<email>` instead of 
 
 ### Users and roles
 
-Sign-in is invite-only and roles live in the `users` table ([ADR 0002](../docs/architecture_decision_records/0002-invite-only-users-and-admin-roles.md)). An invitation is a row with no `google_sub` yet; the first sign-in with a matching verified email claims it. Anyone else gets `403 not_invited`, and a disabled account `403 account_disabled`. The row is read on every request, so role changes apply immediately.
+Sign-in is invite-only and roles live in the `users` table ([ADR 0002](../docs/architecture_decision_records/0002-invite-only-users-and-admin-roles.md), [ADR 0003](../docs/architecture_decision_records/0003-merge-superuser-into-admin.md)). An invitation is a row with no `google_sub` yet; the first sign-in with a matching verified email claims it. Anyone else gets `403 not_invited`, and a disabled account `403 account_disabled`. The row is read on every request, so role changes apply immediately.
 
-- `role` is `student` or `professor`. `is_admin` lets a user invite people and change students' and professors' roles; `is_superuser` also lets them grant admin.
-- Superusers are made only with the CLI, `li-admin create-superuser EMAIL` (`make cloud-create-superuser EMAIL=...` in prod). `li-admin add-user EMAIL --role professor [--admin]` and `li-admin list` work the same way. docker compose seeds `prof@example.edu` (professor, superuser) and `student@example.edu`.
+- `role` is `student` or `professor`. `is_admin` lets a user invite people, change anyone's role (their own included), grant and revoke admin, and disable accounts. It doesn't include the professor role; an admin switches role instead.
+- The first admin comes from the CLI, `li-admin create-admin EMAIL` (`make cloud-create-admin EMAIL=...` in prod). `li-admin add-user EMAIL --role professor [--admin]` and `li-admin list` work the same way. docker compose seeds `prof@example.edu` (professor, admin) and `student@example.edu`.
 - Every change writes a `user_audit` row (actor, target, action, before/after).
 
 ## Configuration
@@ -52,13 +52,13 @@ Every endpoint except the health checks needs `Authorization: Bearer <Google ID 
 
 | Method | Path | Who | Body | Result |
 |---|---|---|---|---|
-| `GET` | `/ingest/me` | anyone signed in | | `id`, `email`, `name`, `role`, `is_admin`, `is_superuser` |
+| `GET` | `/ingest/me` | anyone signed in | | `id`, `email`, `name`, `role`, `is_admin` |
 | `GET` | `/ingest/admin/users` | admin | | all users, each with `status`: `invited`, `active` or `disabled` |
 | `POST` | `/ingest/admin/users` | admin | `{"emails": [...], "role": "student"}` | `201` `{"created": [users], "already_exists": [emails]}` |
-| `PATCH` | `/ingest/admin/users/{id}` | admin | any of `role`, `is_active`; `is_admin` (superuser only) | the updated user |
+| `PATCH` | `/ingest/admin/users/{id}` | admin | any of `role`, `is_active`, `is_admin` | the updated user |
 | `DELETE` | `/ingest/admin/users/{id}` | admin | | `204`; only for invitations nobody has claimed (`409` otherwise: disable instead) |
 
-Nobody can change their own account; only superusers can change admins; superusers can't be changed through the API at all.
+On their own account, an admin can change only `role`, so the API can't remove the last admin.
 
 ### Ingest (professor role)
 

@@ -65,7 +65,6 @@ export interface Me {
   name: string | null;
   role: UserRole;
   is_admin: boolean;
-  is_superuser: boolean;
 }
 
 /** A row on the admin page; "invited" means they haven't signed in yet. */

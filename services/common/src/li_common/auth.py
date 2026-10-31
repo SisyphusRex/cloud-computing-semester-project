@@ -38,7 +38,6 @@ class User:
     name: str | None
     role: str
     is_admin: bool = False
-    is_superuser: bool = False
     is_active: bool = True
 
 
@@ -107,9 +106,9 @@ def load_user(claims: dict) -> User:
     return user
 
 
-def require_user(role: str | None = None, *, admin: bool = False, superuser: bool = False):
+def require_user(role: str | None = None, *, admin: bool = False):
     """Require a signed-in user and store it in `g.user`. Optionally require
-    `role`, or the admin or superuser flag (a superuser is also an admin)."""
+    `role`, or the admin flag."""
 
     def decorator(view):
         @wraps(view)
@@ -124,8 +123,6 @@ def require_user(role: str | None = None, *, admin: bool = False, superuser: boo
                 abort(403, f"Requires the {role} role")
             if admin and not g.user.is_admin:
                 abort(403, "Requires an admin")
-            if superuser and not g.user.is_superuser:
-                abort(403, "Requires a superuser")
             return view(*args, **kwargs)
 
         return wrapper

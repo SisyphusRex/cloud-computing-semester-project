@@ -2,13 +2,13 @@
 createsuperuser. Connects with database-admin credentials, the same way as
 li-migrate (DATABASE_URL, password in PGPASSWORD).
 
-  li-admin create-superuser EMAIL
+  li-admin create-admin EMAIL
   li-admin add-user EMAIL --role student|professor [--admin]
   li-admin list
 
-The only way to make a superuser: no API endpoint sets is_superuser (ADR 0002).
-Every command is idempotent and audited with actor_id NULL. In prod, run it
-with `make cloud-admin ARGS="..."` (scripts/cloud-admin.sh).
+How the first admin is made; after that, admins can grant admin on the Admin
+page (ADR 0003). Every command is idempotent and audited with actor_id NULL. In
+prod, run it with `make cloud-admin ARGS="..."` (scripts/cloud-admin.sh).
 """
 
 import argparse
@@ -23,21 +23,17 @@ from li_common.config import env
 logger = logging.getLogger(__name__)
 
 
-def add_user(
-    conn, email: str, role: str | None = None, *, admin: bool = False, superuser: bool = False
-) -> dict:
-    """Invite `email`, or update its existing row. Never demotes: `role=None`
-    keeps the current role, and the flags are only ever turned on."""
+def add_user(conn, email: str, role: str | None = None, *, admin: bool = False) -> dict:
+    """Invite `email`, or update its existing row. `role` replaces the current
+    role, and `role=None` keeps it; the admin flag is only ever turned on."""
     row = users.find_by_email(conn, email)
     if row is None:
         row = users.invite(conn, email, role or "student", actor_id=None)
     changes = {}
     if role:
         changes["role"] = role
-    if admin or superuser:
+    if admin:
         changes["is_admin"] = True
-    if superuser:
-        changes["is_superuser"] = True
     return users.update(conn, row["id"], actor_id=None, **changes)
 
 
@@ -47,8 +43,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--database-url", default=env("DATABASE_URL"))
     commands = parser.add_subparsers(dest="command", required=True)
-    superuser = commands.add_parser("create-superuser", help="make EMAIL a superuser and admin")
-    superuser.add_argument("email")
+    create_admin = commands.add_parser("create-admin", help="make EMAIL an admin")
+    create_admin.add_argument("email")
     add = commands.add_parser("add-user", help="invite EMAIL, or update its role")
     add.add_argument("email")
     add.add_argument("--role", choices=users.ROLES, required=True)
@@ -62,16 +58,16 @@ def main(argv: list[str] | None = None) -> None:
             for row in conn.execute(f"SELECT {users.ADMIN_COLUMNS} FROM users ORDER BY email"):
                 logger.info(_describe(row))
             return
-        if args.command == "create-superuser":
-            row = add_user(conn, args.email, superuser=True)
+        if args.command == "create-admin":
+            row = add_user(conn, args.email, admin=True)
         else:
             row = add_user(conn, args.email, args.role, admin=args.admin)
         logger.info(_describe(row))
 
 
 def _describe(row: dict) -> str:
-    flags = [f for f in ("is_admin", "is_superuser") if row[f]]
-    return f"{row['email']}  {row['role']}  {row['status']}  {' '.join(flags)}".rstrip()
+    admin = "is_admin" if row["is_admin"] else ""
+    return f"{row['email']}  {row['role']}  {row['status']}  {admin}".rstrip()
 
 
 if __name__ == "__main__":

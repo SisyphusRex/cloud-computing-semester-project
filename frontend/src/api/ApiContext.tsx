@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { config } from "../config";
@@ -14,6 +14,8 @@ export interface ApiValue {
   role: Role;
   /** The signed-in user, from GET /ingest/me; null until it arrives. */
   me: Me | null;
+  /** Fetch `me` again, after changing your own role. */
+  refreshMe: () => Promise<void>;
   /** Set when the account can't use the app: 403 not_invited or account_disabled. */
   accessError: ApiError | null;
 }
@@ -58,11 +60,19 @@ export function ApiProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [api, token]);
+  const refreshMe = useCallback(async () => {
+    if (!token) return;
+    const me = await api.me();
+    setAnswer({ token, me, accessError: null });
+  }, [api, token]);
   const current = answer?.token === token ? answer : null;
   const me = current?.me ?? null;
   const accessError = current?.accessError ?? null;
   const role = me?.role ?? null;
 
-  const value = useMemo(() => ({ api, role, me, accessError }), [api, role, me, accessError]);
+  const value = useMemo(
+    () => ({ api, role, me, refreshMe, accessError }),
+    [api, role, me, refreshMe, accessError],
+  );
   return <ApiContext.Provider value={value}>{children}</ApiContext.Provider>;
 }

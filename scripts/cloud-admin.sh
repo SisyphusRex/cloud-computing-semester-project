@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # Run li-admin (user accounts; ADR 0002) against the production database.
-#   make cloud-create-superuser EMAIL=you@example.com
+#   make cloud-create-admin EMAIL=you@example.com
 #   make cloud-admin ARGS="add-user someone@example.com --role professor"
 #   make cloud-admin ARGS=list
 #   (or scripts/cloud-admin.sh <li-admin arguments>)
 #
-# Only li-admin, with database-admin credentials, can make a superuser. It runs
+# li-admin, with database-admin credentials, makes the first admin. It runs
 # as a one-off Job derived from the migrate Job (same service account, db-admin
 # secret and Cloud SQL proxy sidecar), using the ingest image that's deployed now,
 # so the CLI matches the schema. The environment must be running (make
 # cloud-resume). Needs gcloud, kubectl and jq. DRY_RUN=1 prints the Job instead.
 set -euo pipefail
 
-(( $# )) || { echo "usage: $0 <li-admin arguments>, e.g. create-superuser EMAIL" >&2; exit 2; }
+(( $# )) || { echo "usage: $0 <li-admin arguments>, e.g. create-admin EMAIL" >&2; exit 2; }
 
 PROJECT=${GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null || true)}
 REGION=${GCP_REGION:-us-central1}

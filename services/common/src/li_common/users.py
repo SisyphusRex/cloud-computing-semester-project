@@ -9,9 +9,9 @@ the caller owns, so each change and its audit row commit together.
 from psycopg.types.json import Jsonb
 
 ROLES = ("student", "professor")
-_UPDATABLE = {"role", "is_active", "is_admin", "is_superuser"}
+_UPDATABLE = {"role", "is_active", "is_admin"}
 
-COLUMNS = "id, email, name, role, is_admin, is_superuser, is_active"
+COLUMNS = "id, email, name, role, is_admin, is_active"
 # What the admin page shows; status is derived, not stored.
 ADMIN_COLUMNS = f"""
     {COLUMNS}, created_at,
@@ -54,8 +54,8 @@ def invite(conn, email: str, role: str, actor_id: int | None) -> dict | None:
 
 
 def update(conn, user_id: int, actor_id: int | None, **changes) -> dict | None:
-    """Set the given columns (role, is_active, is_admin, is_superuser) and audit
-    the ones that actually changed. Returns the updated row, or None if missing."""
+    """Set the given columns (role, is_active, is_admin) and audit the ones that
+    actually changed. Returns the updated row, or None if missing."""
     if unknown := changes.keys() - _UPDATABLE:
         raise ValueError(f"not updatable: {sorted(unknown)}")
     before = conn.execute(

@@ -12,7 +12,6 @@ function user(id: number, email: string, extra: Partial<AdminUser> = {}): AdminU
     name: null,
     role: "student",
     is_admin: false,
-    is_superuser: false,
     is_active: true,
     status: "active",
     created_at: "2026-10-19",
@@ -23,15 +22,14 @@ function user(id: number, email: string, extra: Partial<AdminUser> = {}): AdminU
 const ME = user(1, "admin@example.edu", { is_admin: true });
 const USERS = [
   ME,
-  user(2, "root@example.edu", { is_admin: true, is_superuser: true }),
   user(3, "other-admin@example.edu", { is_admin: true }),
   user(4, "student@example.edu"),
   user(5, "invited@example.edu", { status: "invited" }),
 ];
 
-function setup(me: Partial<AdminUser> = ME, overrides = {}) {
+function setup(overrides = {}, refreshMe?: () => Promise<void>) {
   const api = fakeApi({ listUsers: vi.fn(() => Promise.resolve(USERS)), ...overrides });
-  renderPage(<AdminPage />, { api, role: "student", me, path: "/admin", url: "/admin" });
+  renderPage(<AdminPage />, { api, role: "student", me: ME, refreshMe, path: "/admin", url: "/admin" });
   return api;
 }
 
@@ -56,7 +54,7 @@ describe("<AdminPage>", () => {
     const inviteUsers = vi.fn(() =>
       Promise.resolve({ created: [user(6, "new@example.edu")], already_exists: ["student@example.edu"] }),
     );
-    const api = setup(ME, { inviteUsers });
+    const api = setup({ inviteUsers });
 
     await userEvent.type(screen.getByLabelText(/Emails/), "new@example.edu, student@example.edu");
     await userEvent.selectOptions(screen.getByLabelText("Role"), "professor");
@@ -69,48 +67,45 @@ describe("<AdminPage>", () => {
     expect(api.listUsers).toHaveBeenCalledTimes(2);
   });
 
-  it("lets an admin change students and professors, but not admins, superusers or themselves", async () => {
-    const updateUser = vi.fn(() => Promise.resolve(USERS[3]));
-    setup(ME, { updateUser });
+  it("lets an admin change other users, admins included", async () => {
+    const updateUser = vi.fn(() => Promise.resolve(USERS[2]));
+    const refreshMe = vi.fn(() => Promise.resolve());
+    setup({ updateUser }, refreshMe);
 
-    expect(await screen.findByLabelText("Role for admin@example.edu")).toBeDisabled();
-    expect(screen.getByLabelText("Role for root@example.edu")).toBeDisabled();
-    expect(screen.getByLabelText("Role for other-admin@example.edu")).toBeDisabled();
-    expect(screen.getByLabelText("Admin: student@example.edu")).toBeDisabled();
-
-    await userEvent.selectOptions(screen.getByLabelText("Role for student@example.edu"), "professor");
+    await userEvent.selectOptions(await screen.findByLabelText("Role for student@example.edu"), "professor");
     expect(updateUser).toHaveBeenCalledWith(4, { role: "professor" });
 
-    const row = screen.getByText("student@example.edu").closest("tr")!;
-    await userEvent.click(within(row).getByRole("button", { name: "Disable" }));
-    expect(updateUser).toHaveBeenCalledWith(4, { is_active: false });
-  });
-
-  it("shows admin and superuser as separate columns", async () => {
-    setup();
-
-    const rootAdmin = await screen.findByLabelText("Admin: root@example.edu");
-    expect(rootAdmin).toBeChecked();
-    expect(rootAdmin).toBeDisabled();
-    expect(screen.getByRole("img", { name: "Superuser: root@example.edu" })).toBeInTheDocument();
-
-    expect(screen.getByLabelText("Admin: other-admin@example.edu")).toBeChecked();
-    expect(screen.queryByRole("img", { name: "Superuser: other-admin@example.edu" })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Admin: student@example.edu")).not.toBeChecked();
-  });
-
-  it("lets a superuser grant admin", async () => {
-    const updateUser = vi.fn(() => Promise.resolve(USERS[3]));
-    setup({ ...USERS[1] }, { updateUser });
-
-    await userEvent.click(await screen.findByLabelText("Admin: student@example.edu"));
+    await userEvent.click(screen.getByLabelText("Admin: student@example.edu"));
     expect(updateUser).toHaveBeenCalledWith(4, { is_admin: true });
-    expect(screen.getByLabelText("Role for other-admin@example.edu")).toBeEnabled();
+
+    await userEvent.click(screen.getByLabelText("Admin: other-admin@example.edu"));
+    expect(updateUser).toHaveBeenCalledWith(3, { is_admin: false });
+
+    const row = screen.getByText("other-admin@example.edu").closest("tr")!;
+    await userEvent.click(within(row).getByRole("button", { name: "Disable" }));
+    expect(updateUser).toHaveBeenCalledWith(3, { is_active: false });
+
+    expect(refreshMe).not.toHaveBeenCalled();
+  });
+
+  it("lets admins change only the role on their own row", async () => {
+    const updateUser = vi.fn(() => Promise.resolve(ME));
+    const refreshMe = vi.fn(() => Promise.resolve());
+    setup({ updateUser }, refreshMe);
+
+    const role = await screen.findByLabelText("Role for admin@example.edu");
+    expect(screen.getByLabelText("Admin: admin@example.edu")).toBeDisabled();
+    const row = screen.getByText("admin@example.edu").closest("tr")!;
+    expect(within(row).queryByRole("button")).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(role, "professor");
+    expect(updateUser).toHaveBeenCalledWith(1, { role: "professor" });
+    expect(refreshMe).toHaveBeenCalled();
   });
 
   it("cancels an invitation nobody has claimed", async () => {
     const deleteInvitation = vi.fn(() => Promise.resolve());
-    setup(ME, { deleteInvitation });
+    setup({ deleteInvitation });
 
     const row = (await screen.findByText("invited@example.edu")).closest("tr")!;
     await userEvent.click(within(row).getByRole("button", { name: "Cancel invitation" }));

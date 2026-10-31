@@ -34,8 +34,15 @@ wait_ready "$SEARCH"
 check 401 "no token is rejected" "$SEARCH/search/courses"
 check 403 "uninvited account is rejected" "$SEARCH/search/courses" \
   -H "Authorization: Bearer dev:uninvited-$RANDOM@example.edu"
-check 200 "invited professor is a superuser (compose seed)" "$INGEST/ingest/me" -H "$PROF"
-grep -q '"is_superuser":true' /tmp/smoke-body || { echo "FAIL prof@example.edu isn't a superuser"; exit 1; }
+check 200 "invited professor is an admin (compose seed)" "$INGEST/ingest/me" -H "$PROF"
+grep -q '"is_admin":true' /tmp/smoke-body || { echo "FAIL prof@example.edu isn't an admin"; exit 1; }
+PROF_ID=$(python3 -c 'import json; print(json.load(open("/tmp/smoke-body"))["id"])')
+check 200 "admin switches to student" -X PATCH "$INGEST/ingest/admin/users/$PROF_ID" \
+  -H "$PROF" -H 'Content-Type: application/json' -d '{"role":"student"}'
+check 403 "admin who is a student cannot create a course" -X POST "$INGEST/ingest/courses" \
+  -H "$PROF" -H 'Content-Type: application/json' -d '{"code":"X","title":"Y"}'
+check 200 "admin switches back to professor" -X PATCH "$INGEST/ingest/admin/users/$PROF_ID" \
+  -H "$PROF" -H 'Content-Type: application/json' -d '{"role":"professor"}'
 check 201 "professor creates a course" -X POST "$INGEST/ingest/courses" \
   -H "$PROF" -H 'Content-Type: application/json' -d "{\"code\":\"$CODE\",\"title\":\"Smoke test\"}"
 check 403 "student cannot create a course" -X POST "$INGEST/ingest/courses" \

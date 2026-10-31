@@ -1,6 +1,6 @@
 # ADR 0002: Invite-only sign-in, with roles set by admins in the database
 
-- **Status:** Accepted
+- **Status:** Accepted; the superuser tier is superseded by [ADR 0003](0003-merge-superuser-into-admin.md)
 - **Date:** 2026-10-19
 - **Changes:** how users get the professor role in the Milestone 2 implementation (the `PROFESSOR_EMAILS` allowlist)
 

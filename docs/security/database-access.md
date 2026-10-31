@@ -2,7 +2,7 @@
 
 How to run a query against the production Postgres database (Cloud SQL instance `li-pg`), for one-off checks such as the duplicate-email check before [ADR 0002](../architecture_decision_records/0002-invite-only-users-and-admin-roles.md)'s migration.
 
-For **user accounts**, don't use SQL: use the Admin page, or `make cloud-admin ARGS=list` / `make cloud-create-superuser EMAIL=...` ([runbook](../runbooks/bootstrap.md), "First deploy"). Those write the audit trail; hand-written SQL doesn't.
+For **user accounts**, don't use SQL: use the Admin page, or `make cloud-admin ARGS=list` / `make cloud-create-admin EMAIL=...` ([runbook](../runbooks/bootstrap.md), "First deploy"). Those write the audit trail; hand-written SQL doesn't.
 
 ## Why there's no direct connection
 
