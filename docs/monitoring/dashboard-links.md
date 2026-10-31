@@ -1,6 +1,6 @@
-# Dashboard links
+# Environment and dashboard links
 
-Where to look at the running system in the web consoles. Google Cloud links open the project `lecture-indexer-511419` directly; sign in with an account that has access to it. The monitoring dashboard and remaining alerts from step 5 of the [implementation plan](../implementation-plan.md) don't exist yet; they'll be added here.
+The values of our deployed environment, and where to look at the running system in the web consoles. None of these values are secrets. Google Cloud links open the project `lecture-indexer-511419` directly; sign in with an account that has access to it. The monitoring dashboard and remaining alerts from step 5 of the [implementation plan](../implementation-plan.md) don't exist yet; they'll be added here.
 
 ## The app
 
@@ -8,6 +8,23 @@ Where to look at the running system in the web consoles. Google Cloud links open
 |---|---|
 | Frontend (Cloud Run) | https://li-frontend-byshtpdfha-uc.a.run.app |
 | API (load balancer) | https://34-128-137-19.sslip.io (`/search/courses` answers `401` without a sign-in) |
+
+## Our environment
+
+| What | Value |
+|---|---|
+| GCP project | `lecture-indexer-511419` (number `294292796743`), region `us-central1` |
+| Terraform state | `gs://lecture-indexer-511419-tfstate` (versioned, public access blocked) |
+| OAuth client ID | `294292796743-npo1ene9euu5v10tundn5inb1sval8n4.apps.googleusercontent.com` |
+| Azure subscription | Azure for Students, `898a010f-f766-4657-b683-6fb3c7399a77`; resources in `northcentralus` |
+| CI identities | GCP: `github-terraform`, `github-deploy`, `github-plan`. Azure: `id-li-github`, `id-li-github-plan` (resource group `rg-li-ci`) |
+| GitHub `prod` environment | Deploys only from `main`; reviewers awojo, joshuajubenville, SisyphusRex; self-approval allowed; admin bypass on (team decision) |
+| Backup storage | Account `libackupecd087147d`, container `https://libackupecd087147d.blob.core.windows.net/backups`, in `rg-li-backup` |
+| Backup retention | Immutable for 30 days (unlocked policy), deleted at 35 days |
+| Backup service account | `li-backup@lecture-indexer-511419.iam.gserviceaccount.com` |
+| Backup upload credential | Secret Manager `backup-sas`; expires 2027-10-31 |
+| Backup encryption public key | `age1zuvsq4vtwc49dwkdt8uknl3kh2z2rt52p8r3kmfag4n9a0kwz4sqes3nz2` |
+| Backup alert | Cloud Monitoring policy "Database backup failed", by email |
 
 ## Google Cloud
 

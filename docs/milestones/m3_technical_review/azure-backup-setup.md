@@ -2,6 +2,8 @@
 
 What we did on 2026-10-31 to start backing up the production database to Azure, in order, with the results and the problems we hit. This is the record of that setup. The design is in [ADR 0004](../../architecture_decision_records/0004-database-backups-to-azure.md), and day-to-day commands are in the [backup runbook](../../runbooks/backup-and-restore.md).
 
+> **Record of 2026-10-31.** The states below are as they were that day. For how to do this now, use the [backup runbook](../../runbooks/backup-and-restore.md); for what's still open, the [to-do list](../../todo.md#finish-the-backup-setup).
+
 Times are UTC. None of the values here are secrets. The private key, its passphrase and the SAS aren't in this repository, and must never be.
 
 ## Where we are
@@ -154,45 +156,6 @@ The job failed after its retries, and the "Database backup failed" email arrived
 | `gcloud components install beta` failed | `gcloud` was installed from `apt`, which manages its own components | Not needed: the `apt` package already includes `beta` |
 | `make cloud-status` ended with a `compute.googleapis.com` name resolution error | A brief network failure on the local machine, on the command's last check | Nothing to fix; the rest of the output was valid |
 
-## Add teammates to the failure alert
+## Later changes
 
-The alert currently emails one address. Each person needs their own notification channel, and the alert has to list all of them. Terraform accepts only one channel so far, so this takes a small code change and a release. **Don't add people to the alert in the Cloud Console or with `gcloud`:** the next `terraform apply` would remove them again.
-
-Keep teammates' email addresses out of this repository, which is public. The channel names below are safe to share.
-
-1. **Create a channel for each teammate,** and save the `projects/.../notificationChannels/...` name each command prints. Google doesn't ask them to confirm, so tell them these emails are coming.
-   ```sh
-   gcloud beta monitoring channels create --type=email \
-     --display-name="Backups - <name>" \
-     --channel-labels=email_address=<email> \
-     --format='value(name)'
-   ```
-2. **Change the Terraform.** In `infra/terraform/modules/monitoring/main.tf`, change the alert's channels to:
-   ```hcl
-   notification_channels = split(",", var.notification_channel)
-   ```
-   Then update the descriptions of `notification_channel` (in that module's `variables.tf`) and `alert_notification_channel` (in `envs/prod/variables.tf`) to say it's a comma-separated list. Empty still means no alert.
-3. **Update the GitHub variable,** right before merging. Until the code change is live, the current code would treat the list as one invalid channel name. Use commas and no spaces:
-   ```sh
-   gh variable set ALERT_NOTIFICATION_CHANNEL \
-     --body "projects/lecture-indexer-511419/notificationChannels/1402934230220833539,<teammate 1 channel>,<teammate 2 channel>"
-   ```
-4. **Release it.** Merge to `development`, then `main`, and approve. The plan should be `0 to add, 1 to change, 0 to destroy`, with the change on the alert policy.
-5. **Test it.** Rerun the forced failure in [step 11](#11-tested-the-failure-alert), confirm that everyone got the email, and put the CronJob back.
-
-**With a Google Group or mailing list,** you can skip the code change. Point the existing channel at the group, and manage who gets the email there. The group has to accept mail from outside addresses, so test this too:
-
-```sh
-gcloud beta monitoring channels update 1402934230220833539 \
-  --update-channel-labels=email_address=<group email>
-```
-
-## Still to do
-
-1. On 2026-11-01, run `make cloud-restore ARGS="list"` and confirm a backup from around 08:00. The environment has to be running at that time.
-2. Run `make cloud-pause`, and confirm it takes a backup first. After `make cloud-resume`, `kubectl -n li get cronjob backup` should show `SUSPEND` as `False`.
-3. Confirm the local `~/li-backup.key` was deleted with `shred -u`, after checking that an off-machine copy of `~/li-backup.key.age` still decrypts.
-4. Share the encrypted key with a teammate, and the passphrase separately.
-5. Put the SAS expiry, **2027-10-31**, in a calendar. `make cloud-backup-sas` renews it.
-6. [Add teammates to the failure alert](#add-teammates-to-the-failure-alert), so a failed backup doesn't depend on one person's inbox.
-7. Remove the "Start database backups: steps to run" section from the [implementation plan](../../implementation-plan.md), and record the result in its Status table.
+How to add teammates to the alert is now in the [backup runbook](../../runbooks/backup-and-restore.md#add-teammates-to-the-failure-alert). What was still open after this setup is in the [to-do list](../../todo.md#finish-the-backup-setup).

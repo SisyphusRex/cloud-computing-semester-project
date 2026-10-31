@@ -193,9 +193,28 @@ The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused 
 ### First deploy
 
 1. Steps 1–6 done: bootstrap applied, GitHub variables and the `prod` and `prod-plan` environments set, `envs/prod` applied by hand.
-2. Fill `deploy/k8s/overlays/prod/values/values.env` from `terraform output` (each line names its output; `CORS_ORIGINS` is `frontend_url`), plus `GOOGLE_CLIENT_ID`. The release refuses to run while it still has placeholders.
-3. Add the `frontend_url` output as an authorized JavaScript origin on the OAuth client (step 5).
-4. Merge into `main`, read the review sheet and the plan (it should show no changes), and approve. The Google-managed certificate takes 15–60 minutes after the first rollout, so on the first release the API check only warns.
+2. Fill `deploy/k8s/overlays/prod/values/values.env` from `terraform -chdir=infra/terraform/envs/prod output` (each line names its output), plus `GOOGLE_CLIENT_ID`. The release refuses to run while it still contains `REPLACE_ME`, `PROJECT_ID` or `0-0-0-0`. Check the result with `make k8s-check`, or let CI do it.
+
+   | Line | Value |
+   |---|---|
+   | `GOOGLE_CLIENT_ID` | The OAuth client ID from step 5 |
+   | `CORS_ORIGINS` | `frontend_url` |
+   | `CLOUDSQL_CONNECTION_NAME` | `cloudsql.connection_name` |
+   | `INGEST_DB_USER`, `SEARCH_DB_USER` | The service account emails without `.gserviceaccount.com` |
+   | `MIGRATE_GRANTS` | `migrate_grants` |
+   | `INGEST_GSA`, `SEARCH_GSA`, `MIGRATE_GSA` | `workload_service_accounts` |
+   | `API_HOSTNAME` | `api_hostname` |
+   | `DB_ADMIN_SECRET_VERSION` | `cloudsql.admin_password_secret` + `/versions/latest` |
+   | `BACKUP_*` | See the [backup runbook](backup-and-restore.md#first-time-setup) |
+3. Add the `frontend_url` output (`https://li-frontend-….run.app`) as an authorized JavaScript origin on the OAuth client (step 5), exactly, including `https://` and no trailing slash. Keep `http://localhost:5173`. Changes can take a few minutes to apply.
+4. Merge into `main`, read the review sheet and the plan (it should show no changes), and approve. The Google-managed certificate takes 15–60 minutes after the first rollout, so on the first release the API check only warns. To watch it:
+
+   ```sh
+   gcloud container clusters get-credentials li --region us-central1
+   kubectl -n li describe managedcertificate li-api   # wait for Status: Active
+   ```
+
+   Optionally, test the rollback once: **Actions → Roll back → Run workflow** with the new tag. It redeploys the same release and should change nothing.
 5. **Create the first admin.** Sign-in is invite-only ([ADR 0002](../architecture_decision_records/0002-invite-only-users-and-admin-roles.md)), so nobody can sign in yet:
 
    ```sh
@@ -203,3 +222,5 @@ The pause check (`scripts/ci/check-paused.sh`) counts the environment as paused 
    ```
 
    It runs `li-admin` as a one-off Job with the database-admin credentials (`scripts/cloud-admin.sh`), in the deployed ingest image; the environment must be running. Then sign in, open **Admin**, and invite the rest of the team (tick *Admin* for anyone who should invite others). `make cloud-admin ARGS=list` shows every account.
+6. **Verify end to end.** Once the certificate is active, `curl -i https://<api_hostname>/search/courses` returns `401` (the request reached the Search API, which needs a sign-in), and `curl <frontend_url>/health` returns `ok` (not `/healthz`: Cloud Run reserves paths ending in `z`). On the Cloud Run URL, sign in with Google, open **Manage** as a professor, register a video with auto-generated captions, search a spoken word as a student, and check that the link opens YouTube at the right moment.
+7. **Pause when done:** `make cloud-pause`, and `make cloud-resume` next time.

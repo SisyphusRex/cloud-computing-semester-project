@@ -7,19 +7,14 @@ The automated tests mock Google sign-in and the YouTube API. This test runs the 
 - Optionally, a second video of yours with only uploaded captions, and the URL of any video you don't own.
 - The local setup from [local-development.md](../local-development.md) working (`make dev-up`, `make frontend-dev`).
 
-## 1. Google Cloud Console (once)
+## 1. Google Cloud setup (once)
 
-Do this in the GCP project Terraform will use. Any project works, but this one reuses the OAuth client in production; Terraform can't create the client (runbook step 5).
+Follow [bootstrap runbook §5](bootstrap.md#5-create-the-google-oauth-client-console-only) in the GCP project Terraform will use. Any project works, but this one reuses the OAuth client in production; Terraform can't create the client. For this test:
 
-1. **APIs & Services → Library**: enable **YouTube Data API v3**. API calls count against this project's free daily quota.
-2. **OAuth consent screen**:
-   - User type **External**, publishing status **Testing**.
-   - Scopes: `openid`, `email`, `profile`, `https://www.googleapis.com/auth/youtube.force-ssl`.
-   - **Test users**: add every tester's Google account. Others can't sign in while the app is in Testing.
-3. **Credentials → Create credentials → OAuth client ID**:
-   - Type **Web application**.
-   - Authorized JavaScript origin `http://localhost:5173`. No redirect URI is needed.
-   - Copy the client ID. It isn't a secret.
+- If `envs/prod` hasn't been applied to the project, enable **YouTube Data API v3** yourself under **APIs & Services → Library**; Terraform enables it otherwise. API calls count against this project's free daily quota.
+- Add every tester's Google account as a test user. Others can't sign in while the app is in Testing.
+- The only JavaScript origin this test needs is `http://localhost:5173`. No redirect URI is needed.
+- Copy the client ID. It isn't a secret.
 
 ## 2. Start the APIs with real Google auth
 
@@ -84,10 +79,12 @@ The text should read as clean running speech: no repeated phrases, no `<c>` or t
 | `Error 403: access_denied` at sign-in | Your account isn't a test user on the consent screen |
 | `401 Invalid or expired ID token` | `GOOGLE_CLIENT_ID` in `.env` doesn't match `VITE_GOOGLE_CLIENT_ID`, or the APIs weren't recreated after you edited `.env` (run `up -d` again) |
 | `400 youtube_token_invalid` | The YouTube permission was declined, or the scope isn't on the consent screen |
-| `403 not_video_owner` on your own video | The account owns the video but `captions.download` refused the auto-generated track. See "Record" below. If the account has several channels (brand accounts), pick the video's channel when you sign in. |
+| `403 not_video_owner` on your own video | The account owns the video but `captions.download` refused the auto-generated track. See [what the results needed to answer](../milestones/m2_prototype_review/real-youtube-test.md#7-what-the-results-needed-to-answer). If the account has several channels (brand accounts), pick the video's channel when you sign in. |
 | `502 youtube_error` mentioning the API | YouTube Data API v3 isn't enabled in the project |
 | `422 no_captions` on a video that should have auto-captions | The ASR track isn't ready yet, or it's disabled for the video in YouTube Studio |
 
 ## 6. Finish
 
 To finish, run `docker compose -f docker-compose.yml -f docker-compose.google.yml down`, then set `VITE_DEV_AUTH=1` again to return to dev sign-in. You can keep `.env` and the override file for next time.
+
+Record each run: what we found the first time, and the questions a run should answer, are in the [run log](../milestones/m2_prototype_review/real-youtube-test.md).

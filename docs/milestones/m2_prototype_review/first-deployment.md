@@ -4,6 +4,8 @@ What we've done to get Lecture Indexer into production, and the checklist for th
 
 Last updated: 2026-10-18.
 
+> **Record of 2026-10-18.** Names and steps below are as they were then: for example, `PROFESSOR_EMAILS` has since been replaced by invite-only sign-in ([ADR 0002](../../architecture_decision_records/0002-invite-only-users-and-admin-roles.md)). For a new deploy, use the [bootstrap runbook, step 8](../../runbooks/bootstrap.md#first-deploy). Current values are in [Environment and dashboard links](../../monitoring/dashboard-links.md).
+
 ## Where we are
 
 | Runbook step | State |
@@ -160,3 +162,21 @@ Kept for the record; the results above show which ones happened.
 - **The certificate.** `sslip.io` hostnames should work with Google-managed certificates, but provisioning is slow, and `curl` shows certificate errors until it's done.
 - **Google sign-in from `run.app`.** The origin must be added exactly, including `https://` and no trailing slash. Changes can take a few minutes to apply.
 - **YouTube quota.** One registration costs 252 units of the 10,000 a day (about 39 registrations).
+
+## Milestone 2 report checklist
+
+The brief we wrote for the Prototype Review report (week 10, 10% of the grade), which is now done: [`CS6030_F26_PrototypeReview_LectureIndexer.pdf`](CS6030_F26_PrototypeReview_LectureIndexer.pdf), source in [`report/`](report/). It showed how we implemented each deliverable from the [course requirements](../m1_project_proposal/project-requirements.md):
+
+| Deliverable | What to show | Where the evidence is |
+|---|---|---|
+| **1. Initial deployment** | The live system: Cloud Run frontend, GKE Ingest and Search APIs behind the load balancer, Cloud SQL, Secret Manager, Artifact Registry; Azure for the CI identities and backups. All provisioned with Terraform | [first-deployment.md](first-deployment.md), [runbooks/bootstrap.md](../../runbooks/bootstrap.md), `infra/terraform/`, [dashboard links](../../monitoring/dashboard-links.md); release [`prod-2026-10-18.1`](https://github.com/SisyphusRex/cloud-computing-semester-project/releases/tag/prod-2026-10-18.1) |
+| **2. CI/CD pipeline** | CI on every push (lint, tests against Postgres, compose smoke test, Terraform and Kubernetes checks, frontend and image tests); the release workflow (review sheet, read-only plan, one approval, ordered release, automatic rollback, tags); keyless OIDC to both clouds | `.github/workflows/`, [release-process.md](../../release-process.md), Actions run history |
+| **3. Basic functionality** | Google sign-in, professor and student roles, registering a lecture through the YouTube API, search with timestamped deep links, working in production | Results in [first-deployment.md](first-deployment.md), [real-youtube-test.md](real-youtube-test.md); screenshots to take |
+
+Also worth including:
+- **The architecture as deployed,** and how it differs from the proposal: the frontend moved from Azure Static Web Apps to Cloud Run ([ADR 0001](../../architecture_decision_records/0001-frontend-on-cloud-run.md)).
+- **What went wrong and how we fixed it:** the Azure region policy, GitHub's immutable OIDC subjects, the ConfigMap namespace, and Cloud Run's reserved `/healthz` (the table in first-deployment.md).
+- **Cost so far and cost controls** (`make cloud-pause`), from the billing report.
+- **AI usage:** the session logs in [`ai_usage/`](../../ai_usage/).
+
+Before writing it, check the course page for a required format or length, and take screenshots while the environment is running (resume it with `make cloud-resume`).

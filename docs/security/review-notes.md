@@ -1,0 +1,22 @@
+# Security review notes
+
+Everything earlier work set aside for the [M3 security review](../milestones/m3_technical_review/), in one list, with the source of each note. This is the review's input, not the review. The course requires it to show identity management, access control and secrets management.
+
+## Identity and access control
+
+- **User administration (ADRs 0002 and 0003)** for the M3 security review: who can grant what (admins do everything on the Admin page except disable themselves or change their own admin flag; the first admin comes from `li-admin`, which needs the database-admin secret; a stolen admin session reaches the top tier), the `user_audit` trail and `user_claimed` / `sign_in_not_invited` log events, and that the admin endpoints live in the Ingest API so Search keeps its read-mostly database role. Human access to the database (Cloud SQL Studio as `li_admin`) and its rules: [database-access.md](database-access.md).
+- **Who can grant which tier** ([ADR 0002](../architecture_decision_records/0002-invite-only-users-and-admin-roles.md), [ADR 0003](../architecture_decision_records/0003-merge-superuser-into-admin.md)). ADR 0002's split, where the top tier needed database-admin access, is gone: since ADR 0003, a single admin tier reaches everything from the web UI.
+- **A stolen admin session reaches the top tier** ([ADR 0003](../architecture_decision_records/0003-merge-superuser-into-admin.md)). An attacker with an admin's token, which lasts about an hour, could grant admin or disable other admins, but not disable or demote the account they're using. `user_audit` records it, and `li-admin` can restore access.
+- **YouTube scope.** The proposal says the professor's YouTube token is requested with a read-only scope, but `captions.list` and `captions.download` only accept `youtube.force-ssl`. The token is used for one request and never stored or logged. Correct this in the M3 security review.
+- **Consent screen wording** (from the [real test's follow-ups](../milestones/m2_prototype_review/real-youtube-test.md#8-results-2026-10-18)). It tells professors the app can "see, edit, and permanently delete" their YouTube videos; explain that only GET calls are made and the token is never stored.
+- **Sign-in persistence, if it's ever done** ([to-do list](../todo.md#keep-the-sign-in-across-page-refreshes)). Keeping the session in `sessionStorage` exposes the ID token to injected scripts until it expires; note the trade-off.
+
+## Secrets management
+
+- **Static Web Apps deploy token** ([ADR 0001](../architecture_decision_records/0001-frontend-on-cloud-run.md)). The token, which Terraform stored in state, no longer exists.
+- **Backups log in as `li_admin`** ([ADR 0004](../architecture_decision_records/0004-database-backups-to-azure.md)), the same as migrations. The CronJob's Google service account can read that password. A read-only backup user is worth considering.
+- **Immutability's limit** ([ADR 0004](../architecture_decision_records/0004-database-backups-to-azure.md)). A subscription owner can remove the unlocked policy, so it protects against a stolen SAS or a mistake, not against a compromised Azure owner account.
+
+## Browser security
+
+- **CSP** ([ADR 0001](../architecture_decision_records/0001-frontend-on-cloud-run.md)). It's now set by nginx, and its `connect-src` names the API origin at build time.

@@ -16,20 +16,45 @@ Backups run at 08:00 UTC, are named `li-<UTC time>.dump.age`, can't be changed o
 
 ## First-time setup
 
-The order matters. Backups need values from Terraform, and Kubernetes can't start the job until its secret has a value.
+The order matters. Backups need values from Terraform, and Kubernetes can't start the job until its secret has a value. So setup takes two releases: the second needs values that only exist after the first, and a release refuses to run while `REPLACE_ME` is in `values.env`. It takes about an hour, mostly waiting for releases. Run everything from the repository root, and stop and fix anything that fails before moving on. The [record of our setup](../milestones/m3_technical_review/azure-backup-setup.md) shows how this went in practice.
 
-1. **Install the tools.** `age`, plus `az`, `gcloud`, `kubectl` and `jq`, and `psql` and `pg_restore` 16 or newer.
-2. **Create the key pair,** on your own machine:
+1. **Install the tools, and sign in.** `age` (`sudo apt install age`), plus `az`, `gcloud`, `kubectl` and `jq`, and `psql` and `pg_restore` 16 or newer. The alert channel needs `gcloud beta`; `apt` installs of `gcloud` already include it, and `gcloud components install beta` fails on them.
    ```sh
-   age-keygen -o li-backup.key
+   gcloud beta monitoring channels create --help > /dev/null   # must work
+   pg_restore --version
+   az login
+   gcloud auth login
+   gcloud config set project <project>
+   gh auth status
+   make cloud-status
+   make cloud-resume                    # only if Cloud SQL isn't ALWAYS/RUNNABLE
    ```
-   It prints the public key (`age1...`). Keep the private key where it survives losing this machine: a password manager, or `age -p -o li-backup.key.age li-backup.key` and that encrypted file in two places, such as Google Drive and a USB stick. Share it with a teammate, then delete the plain file. **Without it, no backup can be read.** Never commit it, even encrypted: this repository is public.
-3. **Create the storage:**
+2. **Create the key pair,** in a folder outside this repository:
    ```sh
-   terraform -chdir=infra/terraform/bootstrap init -backend-config="bucket=<project>-tfstate"
-   terraform -chdir=infra/terraform/bootstrap apply
-   terraform -chdir=infra/terraform/bootstrap output backup_container_url
+   age-keygen -o ~/li-backup.key
+   age-keygen -y ~/li-backup.key > ~/li-backup.pub      # the public key (age1...), for step 7
+   age -p -o ~/li-backup.key.age ~/li-backup.key        # asks for a passphrase
+   age -d ~/li-backup.key.age | diff - ~/li-backup.key && echo match
    ```
+   Keep the private key where it survives losing this machine: in a password manager if the team has one, or (what we do) `~/li-backup.key.age` in at least two places off this machine, such as Google Drive and a USB stick. Give a teammate the file, and the passphrase separately. **Without the key, no backup can be read.** Never commit it, even encrypted: this repository is public, Git history can't be recalled, and a weak passphrase could be attacked offline forever. Keep `~/li-backup.key` until step 9 needs it.
+3. **Create the storage.** `terraform.tfvars` should already be in `infra/terraform/bootstrap/`:
+   ```sh
+   az provider register --namespace Microsoft.Storage
+   cd infra/terraform/bootstrap
+   terraform init -backend-config="bucket=<project>-tfstate"
+   terraform plan
+   ```
+   On a project that's already bootstrapped, the plan must say `5 to add, 0 to change, 0 to destroy`: `rg-li-backup`, `azapi_resource.account`, a container, an immutability policy and a management policy. It must not contain any `access_key` lines. If it differs, stop. Otherwise:
+   ```sh
+   terraform apply
+   terraform state pull | grep -ciE 'access_?key|connection_?string'   # must print 0
+   terraform output backup_container_url
+   cd ../../..
+   az storage container immutability-policy show \
+     --account-name <storage account> --container-name backups \
+     --query immutabilityPeriodSinceCreationInDays                     # must print 30
+   ```
+   A `RequestDisallowedByAzure` error means an Azure for Students policy refused a setting, so stop there.
 4. **Create the alert channel,** and keep your email out of the repository:
    ```sh
    gcloud beta monitoring channels create --type=email \
@@ -37,17 +62,39 @@ The order matters. Backups need values from Terraform, and Kubernetes can't star
      --format='value(name)'
    gh variable set ALERT_NOTIFICATION_CHANNEL --body "<the name it printed>"
    ```
-5. **Release the Terraform changes.** This creates the `backup` service account, the empty `backup-sas` secret and the alert.
-6. **Create the SAS:** `make cloud-backup-sas`.
-7. **Fill in `deploy/k8s/overlays/prod/values/values.env`,** then release. The release refuses to run while any `REPLACE_ME` remains.
+5. **Release the Terraform changes.** This creates the `backup` service account, its IAM bindings, the empty `backup-sas` secret and the alert, and should destroy nothing. Wait for CI, check the plan in the release run, and approve.
+6. **Create the SAS,** before the next release, or the backup job can't start:
+   ```sh
+   make cloud-backup-sas
+   gcloud secrets versions list backup-sas     # one ENABLED version
+   ```
+   It prints when the credential expires. **Put that date in a calendar.**
+7. **Fill in `deploy/k8s/overlays/prod/values/values.env`,** then release. These values are all safe in a public repository.
 
    | Key | Value |
    |---|---|
-   | `BACKUP_GSA` | `backup` in `terraform output workload_service_accounts` (in `envs/prod`) |
+   | `BACKUP_GSA` | `terraform output -json workload_service_accounts \| jq -r .backup` (in `envs/prod`) |
    | `BACKUP_SAS_SECRET_VERSION` | `terraform output -raw backup_sas_secret` (in `envs/prod`), plus `/versions/latest` |
-   | `BACKUP_AGE_RECIPIENT` | The public key from step 2 |
+   | `BACKUP_AGE_RECIPIENT` | The public key: `cat ~/li-backup.pub` |
    | `BACKUP_CONTAINER_URL` | The URL from step 3 |
-8. **Test it:** run `make cloud-backup`, then the restore test below, then [check the SAS and the alert](#check-the-protections).
+
+   Confirm none are left, and that no key files are about to be committed:
+   ```sh
+   grep -c REPLACE_ME deploy/k8s/overlays/prod/values/values.env   # must print 0
+   git status --short
+   ```
+   Look at the **Backup image** CI job in particular, then approve the release.
+8. **Take a backup:** `make cloud-backup`. The output should end with a `backup_succeeded` line. Copy its `name`, which looks like `li-2026-11-01T150000Z.dump.age`.
+9. **Run the [restore test](#test-a-restore)** with that name and `$HOME/li-backup.key`. It should end with `Restore test finished`. If it fails with `pg_restore` errors or mismatched tables, backups aren't proven yet, so stop and investigate.
+10. **Remove the local key.** First confirm an off-machine copy still decrypts:
+    ```sh
+    age -d ~/li-backup.key.age | diff - ~/li-backup.key && echo match
+    shred -u ~/li-backup.key
+    ```
+    For a later restore, recreate it with `age -d ~/li-backup.key.age > ~/li-backup.key`, and delete it again afterwards.
+11. **[Check the protections](#check-the-protections).**
+12. **Check pausing.** Run `make cloud-pause` and confirm it takes a backup first. Then run `make cloud-resume`, and `kubectl -n li get cronjob backup` should show `SUSPEND` as `False`.
+13. **Next morning,** with the environment running overnight, run `make cloud-restore ARGS="list"` and confirm a backup from around 08:00 UTC is there. That proves the schedule, not just manual runs.
 
 ## Test a restore
 
@@ -119,6 +166,39 @@ Run these once after setup, with your own Azure login (the Terraform output has 
   make cloud-backup   # fails; the email arrives within a few minutes
   kubectl -n li patch cronjob backup --type=json -p '[{"op":"replace","path":"/spec/jobTemplate/spec/template/spec/containers/0/env/2/value","value":"li"}]'
   ```
+
+## Add teammates to the failure alert
+
+The alert currently emails one address. Each person needs their own notification channel, and the alert has to list all of them. Terraform accepts only one channel so far, so this takes a small code change and a release. **Don't add people to the alert in the Cloud Console or with `gcloud`:** the next `terraform apply` would remove them again.
+
+Keep teammates' email addresses out of this repository, which is public. The channel names below are safe to share.
+
+1. **Create a channel for each teammate,** and save the `projects/.../notificationChannels/...` name each command prints. Google doesn't ask them to confirm, so tell them these emails are coming.
+   ```sh
+   gcloud beta monitoring channels create --type=email \
+     --display-name="Backups - <name>" \
+     --channel-labels=email_address=<email> \
+     --format='value(name)'
+   ```
+2. **Change the Terraform.** In `infra/terraform/modules/monitoring/main.tf`, change the alert's channels to:
+   ```hcl
+   notification_channels = split(",", var.notification_channel)
+   ```
+   Then update the descriptions of `notification_channel` (in that module's `variables.tf`) and `alert_notification_channel` (in `envs/prod/variables.tf`) to say it's a comma-separated list. Empty still means no alert.
+3. **Update the GitHub variable,** right before merging. Until the code change is live, the current code would treat the list as one invalid channel name. Use commas and no spaces:
+   ```sh
+   gh variable set ALERT_NOTIFICATION_CHANNEL \
+     --body "projects/lecture-indexer-511419/notificationChannels/1402934230220833539,<teammate 1 channel>,<teammate 2 channel>"
+   ```
+4. **Release it.** Merge to `development`, then `main`, and approve. The plan should be `0 to add, 1 to change, 0 to destroy`, with the change on the alert policy.
+5. **Test it.** Rerun the forced failure in [Check the protections](#check-the-protections), confirm that everyone got the email, and put the CronJob back.
+
+**With a Google Group or mailing list,** you can skip the code change. Point the existing channel at the group, and manage who gets the email there. The group has to accept mail from outside addresses, so test this too:
+
+```sh
+gcloud beta monitoring channels update 1402934230220833539 \
+  --update-channel-labels=email_address=<group email>
+```
 
 ## Tearing down
 

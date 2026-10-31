@@ -2,6 +2,21 @@
 
 Open work that isn't scheduled in the [implementation plan](implementation-plan.md) yet. Move an item there, or delete it, once it's picked up.
 
+## Finish the backup setup
+
+From the [record of the setup](milestones/m3_technical_review/azure-backup-setup.md):
+
+1. On 2026-11-01, run `make cloud-restore ARGS="list"` and confirm a backup from around 08:00 UTC. The environment has to be running at that time.
+2. Run `make cloud-pause`, and confirm it takes a backup first. After `make cloud-resume`, `kubectl -n li get cronjob backup` should show `SUSPEND` as `False`.
+3. Confirm the local `~/li-backup.key` was deleted with `shred -u`, after checking that an off-machine copy of `~/li-backup.key.age` still decrypts.
+4. Share the encrypted key with a teammate, and the passphrase separately.
+5. Put the SAS expiry, **2027-10-31**, in a calendar. `make cloud-backup-sas` renews it.
+6. [Add teammates to the failure alert](runbooks/backup-and-restore.md#add-teammates-to-the-failure-alert), so a failed backup doesn't depend on one person's inbox.
+
+## Delete the older on-demand database backups
+
+Each [first-release attempt](milestones/m2_prototype_review/first-deployment.md#results-2026-10-18) that reached the migrations took a backup, so `li-pg` has three on-demand backups from 2026-10-18 (cents per month; the older two can go).
+
 ## Finish the user-roles change (contract step)
 
 [ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) moved roles into the database. The release that shipped it kept two things for one release, so that the previous version still works during a rollback. **Ready to do:** it went out in `prod-2026-10-19.1`, and later releases followed:
@@ -58,24 +73,6 @@ Two improvements, independent of each other:
    - Keep other tools from clearing the flag: releases and `rollback.yml` already don't deploy while paused, but Terraform would remove an environment variable set by `gcloud`. Add `template[0].containers[0].env` to `ignore_changes` in [`modules/cloud-run-frontend`](../infra/terraform/modules/cloud-run-frontend/main.tf), or use the bucket file instead.
    - Update `cloud-power.sh`'s step list and the runbook.
 
-## Report on the Milestone 2 deliverables
-
-Prepare the Prototype Review report (week 10, 10% of the grade) in [`docs/milestones/m2_prototype_review/`](milestones/m2_prototype_review/). Show how we implemented each deliverable from the [course requirements](milestones/m1_project_proposal/project-requirements.md):
-
-| Deliverable | What to show | Where the evidence is |
-|---|---|---|
-| **1. Initial deployment** | The live system: Cloud Run frontend, GKE Ingest and Search APIs behind the load balancer, Cloud SQL, Secret Manager, Artifact Registry; Azure for the CI identities and backups. All provisioned with Terraform | [first-deployment.md](milestones/m2_prototype_review/first-deployment.md), [runbooks/bootstrap.md](runbooks/bootstrap.md), `infra/terraform/`, [dashboard links](monitoring/dashboard-links.md); release [`prod-2026-10-18.1`](https://github.com/SisyphusRex/cloud-computing-semester-project/releases/tag/prod-2026-10-18.1) |
-| **2. CI/CD pipeline** | CI on every push (lint, tests against Postgres, compose smoke test, Terraform and Kubernetes checks, frontend and image tests); the release workflow (review sheet, read-only plan, one approval, ordered release, automatic rollback, tags); keyless OIDC to both clouds | `.github/workflows/`, [release-process.md](release-process.md), Actions run history |
-| **3. Basic functionality** | Google sign-in, professor and student roles, registering a lecture through the YouTube API, search with timestamped deep links, working in production | Results in [first-deployment.md](milestones/m2_prototype_review/first-deployment.md), [real-youtube-test.md](milestones/m2_prototype_review/real-youtube-test.md); screenshots to take |
-
-Also worth including:
-- **The architecture as deployed,** and how it differs from the proposal: the frontend moved from Azure Static Web Apps to Cloud Run ([ADR 0001](architecture_decision_records/0001-frontend-on-cloud-run.md)).
-- **What went wrong and how we fixed it:** the Azure region policy, GitHub's immutable OIDC subjects, the ConfigMap namespace, and Cloud Run's reserved `/healthz` (the table in first-deployment.md).
-- **Cost so far and cost controls** (`make cloud-pause`), from the billing report.
-- **AI usage:** the session logs in [`ai_usage/`](ai_usage/).
-
-Before writing it, check the course page for a required format or length, and take screenshots while the environment is running (resume it with `make cloud-resume`).
-
 ## Give teammates access to the clouds and the app
 
 **Today:** only the project owner can use the Google Cloud and Azure accounts, and in the app, admin has to be granted account by account ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md); check with `make cloud-admin ARGS=list`). Teammates can't pause or resume the environment, read logs, check costs, or manage users.
@@ -85,7 +82,7 @@ Keep the teammates' email addresses **out of this repository** (it's public; see
 1. **Google Cloud** (project `lecture-indexer-511419`): **IAM & Admin → IAM → Grant access**, for each teammate's Google account.
    - **Owner** if they're full co-owners of the project. That includes IAM and billing visibility.
    - Otherwise, enough for `make cloud-*`, the logs and the [database access guide](security/database-access.md): **Editor**, plus **Secret Manager Secret Accessor** on the `db-admin-password` secret only. Editor alone can't read secret values. Check that `make cloud-pause` / `cloud-resume` work for them; they change Cloud SQL and the cluster.
-   - Also add each one as a **test user** on the OAuth consent screen (**APIs & Services → OAuth consent screen → Audience**). While the app is in testing mode, Google refuses sign-in for anyone else.
+   - Also add each one as a **test user** on the OAuth consent screen (**Google Auth Platform → Audience**). While the app is in testing mode, Google refuses sign-in for anyone else.
 2. **Azure** (subscription with `rg-li-prod` and `rg-li-backup`): invite each teammate as a guest (**Microsoft Entra ID → Users → Invite external user**). Then assign a role on the subscription or on `rg-li-prod` (**Access control (IAM) → Add role assignment**): **Contributor** to manage resources, or **Reader** to look only. Azure for Students may restrict guest invitations; if it does, note what works here.
 3. **App admins**, one per teammate:
    ```sh
@@ -112,6 +109,14 @@ Afterwards, have each teammate confirm with `make cloud-status` and a sign-in to
 ## Optional
 
 Ideas worth considering. Nothing depends on them; pick one up only if it's worth the time.
+
+### Tighter deep links
+
+Links open at the start of a window of up to ~20 s, so a word can play ~10-20 s in ([test results](milestones/m2_prototype_review/real-youtube-test.md#8-results-2026-10-18)). Shorter windows (`max_ms` in `merge_segments`) would tighten them, at the cost of phrases split across segments.
+
+### Replace the caption test fixture with a real download
+
+`services/ingest/tests/fixtures/lecture4.vtt` is modeled on YouTube's usual ASR format, because the raw WebVTT wasn't captured during the test. Real captions parsed cleanly, but the fixture is unconfirmed byte for byte. Next time, trim a real `captions.download` response into the fixture, and update `test_captions.py` if they differ.
 
 ### Keep the sign-in across page refreshes
 
