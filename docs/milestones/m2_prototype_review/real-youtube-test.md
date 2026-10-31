@@ -1,6 +1,6 @@
 # Real Google/YouTube test: progress log
 
-My run of the [real Google/YouTube test](../../implementation-plan.md#next-real-googleyoutube-test-free-before-deploying). That section has the general runbook and troubleshooting; this file tracks what I've done. Tick boxes as I go.
+My run of the [real Google/YouTube test](../../runbooks/real-google-test.md). That section has the general runbook and troubleshooting; this file tracks what I've done. Tick boxes as I go.
 
 **Accounts** (real addresses are kept out of this file; the professor's is in `.env`)
 - **Channel account**: owns the YouTube channel and the test video; signs in as the professor.
@@ -111,3 +111,28 @@ sudo docker compose -f docker-compose.yml -f docker-compose.google.yml down
 ```
 
 - [x] Stack stopped (2026-10-18); `VITE_DEV_AUTH=1` set in `frontend/.env.local` to return to dev sign-in (kept `.env` and the override for next time)
+
+## 7. What the results needed to answer
+
+Write a short "Results (date)" note under this section covering:
+
+- Which cases passed, with the video's length and its segment count.
+- **Whether `captions.download` serves the auto-generated track for the owner's video.** If it doesn't (`403`), map that 403 to its own error code instead of `not_video_owner`, and rethink caption fetching before deploying.
+- **Whether the real WebVTT matches the fixture** `services/ingest/tests/fixtures/lecture4.vtt`: word-timing tags, rolling repeated lines, the `" "` line after each timing. The fixture is modeled on YouTube's usual ASR format, not on a real `captions.download` response. If they differ, replace the fixture with a trimmed real download and update `test_captions.py`.
+- How far deep links land from the spoken word, on average.
+
+## 8. Results (2026-10-18)
+
+Run log: [real-youtube-test.md](#real-googleyoutube-test-progress-log). Video: "Welcome to Michigan" (owner's channel, auto-generated captions only).
+
+- **All cases passed** except 7 (no video with only uploaded captions; covered by unit and route tests): Google sign-in, professor and student roles, registration (37 segments, 650 ms), search with deep links, re-registering without duplicates, rejecting a video from another channel (`403`, nothing written), and delete.
+- **`captions.download` serves the auto-generated track** to the video's owner with `youtube.force-ssl`. The ASR-only design works.
+- **Real ASR WebVTT parses cleanly**: no tags or rolling repeats in the stored text. The raw VTT wasn't captured, so `lecture4.vtt` is still modeled rather than copied.
+- **Deep links land up to ~20 s early** (~10 s in the test): a link opens at the start of its window.
+- **Quota**: one registration costs 252 units (1 + 1 + 50 + 200), so the default 10,000 units a day allow ~39 registrations.
+- **Fixed during the test**: gunicorn 26's control socket failed in the container (`bcd1e71`).
+
+Follow-ups:
+- ~~Strip ASR sound tags such as `[Music]`~~ Done: `captions.py` drops `[...]` tags, and cues left empty are skipped. Lectures indexed before this keep the tags until they are re-registered.
+- Optional: shorter windows (`max_ms` in `merge_segments`) for tighter deep links.
+- M3 security review: the consent screen tells professors the app can "see, edit, and permanently delete" their YouTube videos; explain that only GET calls are made and the token is never stored.

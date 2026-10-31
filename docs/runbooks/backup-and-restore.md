@@ -1,6 +1,6 @@
 # Backup and restore
 
-How the production database is backed up to Azure, how to set that up, and how to get data back. The design and its limits are in [ADR 0004](../architecture_decision_records/0004-database-backups-to-azure.md), and the record of the original setup is in [azure-backup-setup.md](../azure-backup-setup.md).
+How the production database is backed up to Azure, how to set that up, and how to get data back. The design and its limits are in [ADR 0004](../architecture_decision_records/0004-database-backups-to-azure.md), and the record of the original setup is in [azure-backup-setup.md](../milestones/m3_technical_review/azure-backup-setup.md).
 
 | Command | What it does |
 |---|---|

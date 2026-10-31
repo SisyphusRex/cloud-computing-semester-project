@@ -1,6 +1,6 @@
 # Azure backup setup
 
-What we did on 2026-10-31 to start backing up the production database to Azure, in order, with the results and the problems we hit. This is the record of that setup. The design is in [ADR 0004](architecture_decision_records/0004-database-backups-to-azure.md), and day-to-day commands are in the [backup runbook](runbooks/backup-and-restore.md).
+What we did on 2026-10-31 to start backing up the production database to Azure, in order, with the results and the problems we hit. This is the record of that setup. The design is in [ADR 0004](../../architecture_decision_records/0004-database-backups-to-azure.md), and day-to-day commands are in the [backup runbook](../../runbooks/backup-and-restore.md).
 
 Times are UTC. None of the values here are secrets. The private key, its passphrase and the SAS aren't in this repository, and must never be.
 
@@ -195,4 +195,4 @@ gcloud beta monitoring channels update 1402934230220833539 \
 4. Share the encrypted key with a teammate, and the passphrase separately.
 5. Put the SAS expiry, **2027-10-31**, in a calendar. `make cloud-backup-sas` renews it.
 6. [Add teammates to the failure alert](#add-teammates-to-the-failure-alert), so a failed backup doesn't depend on one person's inbox.
-7. Remove the "Start database backups: steps to run" section from the [implementation plan](implementation-plan.md), and record the result in its Status table.
+7. Remove the "Start database backups: steps to run" section from the [implementation plan](../../implementation-plan.md), and record the result in its Status table.

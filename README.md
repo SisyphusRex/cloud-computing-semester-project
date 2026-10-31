@@ -42,7 +42,7 @@ make frontend-install
 make frontend-dev    # http://localhost:5173
 ```
 
-Sign in as `prof@example.edu` (professor) or `student@example.edu`. Registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [implementation plan](docs/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying). Stop with `Ctrl-C` and `make dev-down`.
+Sign in as `prof@example.edu` (professor) or `student@example.edu`. Registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [real Google test](docs/runbooks/real-google-test.md). Stop with `Ctrl-C` and `make dev-down`.
 
 API reference and configuration: [services/README.md](services/README.md). Run `make help` for every target. CI (`.github/workflows/ci.yml`) runs the tests and checks on every push.
 

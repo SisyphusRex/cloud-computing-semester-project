@@ -27,8 +27,9 @@ SKIP_COMMENT_SCAN = (".lock", "package-lock.json", ".gitignore")
 
 
 def tracked_files():
-    output = subprocess.check_output(["git", "ls-files", "-z"], text=True)
-    return [path for path in output.split("\0") if path]
+    command = ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"]
+    output = subprocess.check_output(command, text=True)
+    return [path for path in output.split("\0") if path and os.path.exists(path)]
 
 
 def is_ignored(path):

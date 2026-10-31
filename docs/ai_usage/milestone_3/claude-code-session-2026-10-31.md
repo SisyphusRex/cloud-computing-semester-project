@@ -8,7 +8,7 @@
 | Branches | `twp__fix_admin`, `twp__db_backups` (both pushed); merged through `development` to `main` |
 | Commits produced | `5440949`, `e85629d`, `b600b19`, `bee4a23`, `bc6bac1`, `36b86d1`, `a4b25a9`, plus the commit adding this log |
 | Releases | `prod-2026-10-31.1`, `prod-2026-10-31.2`, `prod-2026-10-31.3` |
-| Outcome | Superuser merged into admin, with admins able to switch role ([ADR 0003](../../architecture_decision_records/0003-merge-superuser-into-admin.md)); rollbacks that fail loudly and verify the API; nightly encrypted database backups to Azure, running in production, with a tested restore and failure alert ([ADR 0004](../../architecture_decision_records/0004-database-backups-to-azure.md), [setup record](../../azure-backup-setup.md)) |
+| Outcome | Superuser merged into admin, with admins able to switch role ([ADR 0003](../../architecture_decision_records/0003-merge-superuser-into-admin.md)); rollbacks that fail loudly and verify the API; nightly encrypted database backups to Azure, running in production, with a tested restore and failure alert ([ADR 0004](../../architecture_decision_records/0004-database-backups-to-azure.md), [setup record](../../milestones/m3_technical_review/azure-backup-setup.md)) |
 
 Each entry gives the prompt exactly as typed, then a summary of what Claude did in response. Where a prompt was terminal output pasted in, the entry describes the output instead of copying it. Claude's answers to its own clarifying questions are included where they shaped the work.
 
@@ -280,7 +280,7 @@ The alert fired at 18:17. Claude confirmed the CronJob was pointing back at `li`
 
 > can you add all the steps we went through today to set up backups on azure to a file in docs/ ?
 
-Claude wrote [`docs/azure-backup-setup.md`](../../azure-backup-setup.md), with the commands, results, problems and what's left, using GitHub for the exact pull requests and releases. It checked that the file contained no email address or secrets.
+Claude wrote [`docs/azure-backup-setup.md`](../../milestones/m3_technical_review/azure-backup-setup.md), with the commands, results, problems and what's left, using GitHub for the exact pull requests and releases. It checked that the file contained no email address or secrets.
 
 ## 26. Adding teammates to the alert
 

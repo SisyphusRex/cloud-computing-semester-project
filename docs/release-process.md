@@ -30,6 +30,23 @@ push to main
 - **Pull requests** into `main` get an early Terraform plan as a comment (`terraform.yml`). That plan is only a preview. The plan that matters is the one in the release run, because that's the one that gets applied.
 - **Before merging**, `make release-diff` prints the same review sheet locally. On the website, compare the last release with `development`: `https://github.com/SisyphusRex/cloud-computing-semester-project/compare/<last prod-* tag>...development` (the latest tag is at the top of **Releases**).
 
+## CI
+
+`.github/workflows/ci.yml` runs on pushes to `main`/`development` and on PRs, with no cloud credentials:
+
+| Job | Checks |
+|---|---|
+| `python` | `make lint`; `make test` against a Postgres service container (all DB tests run) |
+| `compose` | `docker compose up --build`, migrations exit 0, then `scripts/smoke-test.sh` (sign-in, roles, course creation, search) |
+| `terraform` | `fmt -check`, `validate` in both roots, mocked `terraform test` |
+| `k8s` | `make k8s-check`: `kustomize build` + `kubeconform -strict` on both overlays |
+| `docs` | `make docs-check`: document links, anchors and repository paths |
+| `frontend` | `npm ci`, lint, vitest, production build |
+| `frontend-image` | `scripts/test-frontend-image.sh`: builds the nginx image, then checks the app, SPA fallback, 404s, `/health`, and the CSP and cache headers |
+| `backup-image` | `scripts/test-backup-image.sh`: builds the backup image and checks it, including its success log line |
+
+Terraform checks: `terraform fmt -check -recursive`, `terraform validate` in both roots, `terraform -chdir=infra/terraform/envs/prod test`.
+
 ## Tags
 
 Each successful release tags its commit `prod-YYYY-MM-DD.N` (for example `prod-2026-10-18.1`) and creates a GitHub Release.
