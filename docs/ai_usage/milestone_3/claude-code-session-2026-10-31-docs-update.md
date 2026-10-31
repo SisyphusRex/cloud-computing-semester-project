@@ -52,6 +52,16 @@ Still unverified at the end of the session:
 
 The remaining alerts and dashboard, and the contract-step code changes, were out of scope.
 
+## 4. The first CI run
+
+> commit and push
+
+> i merged and pushed development
+
+The working tree was already clean, so Claude pushed the 7 commits. After the user merged them, Claude checked CI on `development`. Seven jobs passed, including the Kubernetes and compose checks it couldn't run locally, but the new **Document links** job failed on `frontend/node_modules`.
+
+The bug was in Claude's checker. `.gitignore` has `node_modules/`, which only matches a directory, and a fresh checkout doesn't have one. The check had only ever run on a machine where the directory existed. Claude reproduced the failure in a clean clone, and its first fix failed there too, because `git check-ignore -q` takes one path. The final fix passed in a clean clone, and a broken path still failed.
+
 <details>
 <summary>Ledger: the 199 baseline units not found verbatim</summary>
 

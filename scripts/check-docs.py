@@ -33,7 +33,10 @@ def tracked_files():
 
 
 def is_ignored(path):
-    return subprocess.run(["git", "check-ignore", "-q", path]).returncode == 0
+    # A pattern like node_modules/ only matches a directory, which a fresh clone
+    # doesn't have, so ask about the path as a directory too.
+    command = ["git", "check-ignore", path, path + "/"]
+    return subprocess.run(command, stdout=subprocess.DEVNULL).returncode == 0
 
 
 def slug(heading):
