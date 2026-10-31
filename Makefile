@@ -7,7 +7,7 @@ TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
 .PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
 	frontend-install frontend-dev frontend-test frontend-image k8s-check release-diff cloud-status cloud-pause cloud-resume \
-	cloud-create-admin cloud-admin report
+	cloud-backup cloud-backup-sas cloud-restore cloud-create-admin cloud-admin report
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-24s %s\n", $$1, $$2}'
@@ -76,11 +76,21 @@ release-diff: ## What the next release would deploy (since the last prod-* tag),
 cloud-status: ## Show whether the deployed environment is running (Cloud SQL, pods, load balancer)
 	scripts/cloud-power.sh status
 
-cloud-pause: ## Stop billable resources between test sessions (keeps data and the API hostname)
+cloud-pause: ## Back up the database, then stop billable resources (keeps data and the API hostname; SKIP_BACKUP=1 skips the backup)
 	scripts/cloud-power.sh pause
 
 cloud-resume: ## Start the deployed environment again
 	scripts/cloud-power.sh resume
+
+cloud-backup: ## Back up the production database to Azure now
+	scripts/cloud-power.sh backup
+
+cloud-backup-sas: ## Create or renew the SAS that backups upload with; see ADR 0004
+	scripts/cloud-backup-sas.sh
+
+cloud-restore: ## List or restore backups (ARGS="list", ARGS="restore BLOB KEYFILE [--overwrite]")
+	@test -n "$(ARGS)" || { echo 'usage: make cloud-restore ARGS="list"'; exit 2; }
+	scripts/cloud-restore.sh $(ARGS)
 
 cloud-create-admin: ## Make EMAIL an admin in prod (EMAIL=you@example.com); see ADR 0003
 	@test -n "$(EMAIL)" || { echo 'usage: make cloud-create-admin EMAIL=you@example.com'; exit 2; }
