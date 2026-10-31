@@ -42,8 +42,9 @@ This creates keyless GitHub Actions access to both clouds. A Workload Identity p
 | in the `prod` GitHub environment | `github-terraform` | `id-li-github` (Contributor) | apply Terraform |
 | in the `prod` GitHub environment | `github-deploy` | — | push images, deploy to GKE, read Cloud SQL's state (the pause check) |
 | on a pull request | `github-plan` (Viewer, read state) | `id-li-github-plan` (Reader) | `terraform plan -refresh=false -lock=false` |
+| in the `prod-plan` GitHub environment | `github-plan` | `id-li-github-plan` | the read-only plan in `release.yml`, before the approval |
 
-Nothing else, including jobs on branch pushes outside the `prod` environment, can get credentials.
+Nothing else, including jobs on branch pushes outside these environments, can get credentials.
 
 ```sh
 cd infra/terraform/bootstrap
@@ -76,15 +77,15 @@ In the repository settings:
 
 ## 5. Create the Google OAuth client (console only)
 
-Terraform can't create OAuth clients for external users, so do this in the console under **APIs & Services**:
+Terraform can't create OAuth clients for external users, so do this in the console under [**Google Auth Platform**](https://console.cloud.google.com/auth/overview). On a new project, **Get started** asks for the app name, a support email and a contact email first.
 
-1. **OAuth consent screen**:
+1. **Audience**:
    - User type **External**, publishing status **Testing**.
-   - Scopes: `openid`, `email`, `profile`, and `https://www.googleapis.com/auth/youtube.force-ssl`.
    - Add every teammate and demo account as a **test user**.
 
    Testing mode allows up to 100 test users, and the YouTube grant expires after 7 days. That's fine for the course and avoids Google's verification review for a sensitive scope.
-2. **Credentials → Create OAuth client ID → Web application**:
+2. **Data Access → Add or remove scopes**, then **Update** and **Save**: `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile`, and `https://www.googleapis.com/auth/youtube.force-ssl` (sensitive, which is expected).
+3. **Clients → Create client → Web application**:
    - Authorized JavaScript origins: the `frontend_url` output from step 6 (the Cloud Run URL, `https://li-frontend-….run.app`), plus `http://localhost:5173`.
    - The client ID becomes `GOOGLE_CLIENT_ID` for the services and frontend. It isn't a secret.
 
@@ -104,7 +105,7 @@ What it creates:
 |---|---|
 | VPC `li` | Subnet with pod/service ranges, Private Google Access, Cloud NAT, private services access for Cloud SQL |
 | GKE Autopilot cluster `li` | Private nodes on a least-privilege node service account; Secret Manager add-on enabled |
-| Artifact Registry `li` | Docker images; keeps the last 10 versions; nodes pull, `github-deploy` pushes |
+| Artifact Registry `li` | Docker images; keeps the newest 10 versions of each image, plus anything under 30 days old; nodes pull, `github-deploy` pushes |
 | Cloud SQL `li-pg` | Postgres 16, `db-f1-micro`, private IP only, IAM authentication; database `li` |
 | Database users | `li_admin`, whose password is generated during the run and written to Cloud SQL and Secret Manager `db-admin-password` only (readable by the migrate and backup workloads); it is never stored in Terraform state. IAM users for `li-ingest` and `li-search` |
 | Service accounts | `li-ingest`, `li-search`, `li-migrate`, `li-backup`, each bound through Workload Identity to the Kubernetes service account of the same name in namespace `li` |
@@ -115,7 +116,7 @@ What it creates:
 
 Check the configuration without credentials: `terraform -chdir=infra/terraform/envs/prod test` runs it against mocked providers.
 
-To rotate the `li_admin` password, increment the default of `db_admin_password_version` in `variables.tf`, commit, and let the Terraform workflow apply it. Don't set it in `terraform.tfvars`: CI doesn't read that file, so its next apply would see a different version and rotate the password again. Cloud SQL and Secret Manager get the new value together; re-run the services deploy afterwards so the migrate Job runs.
+To rotate the `li_admin` password, increment the default of `db_admin_password_version` in `variables.tf`, commit, and release it. Don't set it in `terraform.tfvars`: CI doesn't read that file, so its next apply would see a different version and rotate the password again. Cloud SQL and Secret Manager get the new value together, and the migrate Job in the same release logs in with it.
 
 To query the database by hand (it has only a private IP), see [Accessing the production database](../security/database-access.md).
 
@@ -130,9 +131,10 @@ Rough monthly costs while everything runs. Check the [GCP pricing calculator](ht
 | GKE Autopilot cluster fee | $0: the free-tier credit covers one cluster |
 | Autopilot pods (ingest, search; Spot where possible) | $10–25 |
 | Cloud SQL `db-f1-micro` + 10 GB SSD | ~$11 |
-| HTTPS load balancer forwarding rule (created in step 4) | ~$18 |
+| HTTPS load balancer forwarding rule (created by the first release, step 8) | ~$18 |
 | Cloud NAT, Artifact Registry, logging | a few dollars |
 | Cloud Run `li-frontend` (scales to zero; free tier) | about $0 |
+| Azure Blob backups in `rg-li-backup` (Cool tier, LRS; billed even while paused) | not estimated; see the Azure cost view |
 
 ### Between test sessions: pause
 
@@ -171,7 +173,7 @@ This brings the GCP cost to $0, but:
 
 - **It deletes the database.** Run `make cloud-backup` first, or make sure the data is disposable. The backups stay in Azure, in `rg-li-backup` ([backup runbook](backup-and-restore.md)).
 - **`backup-sas` comes back empty** after a re-create. Run `make cloud-backup-sas` before the next release.
-- **It releases the IP, which changes the API hostname.** After re-creating, update `values.env` and push to `main`; both deploys re-run because `values.env` changed, and the frontend build picks up the new API origin. The Cloud Run URL can change too when the service is re-created: update `CORS_ORIGINS` and the OAuth client's origins.
+- **It releases the IP, which changes the API hostname.** After re-creating, update `values.env` and release it; the frontend build picks up the new API origin. The Cloud Run URL can change too when the service is re-created: update `CORS_ORIGINS` and the OAuth client's origins.
 
 ### Budget alert
 

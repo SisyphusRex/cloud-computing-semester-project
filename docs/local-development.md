@@ -23,7 +23,7 @@ The frontend's dev server forwards `/ingest/*` to `:8081` and `/search/*` to `:8
 | Node.js with npm | 22.22 or newer (`frontend/.nvmrc`) | the frontend |
 | [uv](https://docs.astral.sh/uv/) | latest; it installs Python 3.12 itself | only `make install`, `lint`, `test`, `test-db` |
 
-You don't need Python packages, Postgres, Terraform, kubectl, or any cloud CLI to run the app. `make k8s-check` (kustomize, kubeconform) and Terraform are optional locally, because CI checks them on every push. `gcloud`, `kubectl` and `gke-gcloud-auth-plugin` are needed only to pause and resume the deployed environment ([Install cloud tools](#install-cloud-tools-optional)).
+You don't need Python packages, Postgres, Terraform, kubectl, or any cloud CLI to run the app. `make k8s-check` (kustomize, kubeconform) and Terraform are optional locally, because CI checks them on every push. The cloud CLIs are needed only to operate the deployed environment ([Install cloud tools](#install-cloud-tools-optional)).
 
 ## Install prerequisites: Linux
 
@@ -73,7 +73,18 @@ With Docker Desktop's WSL integration, `docker` works without `sudo`, so you can
 
 ## Install cloud tools (optional)
 
-Only for `make cloud-status`, `cloud-pause` and `cloud-resume`, which pause and resume the deployed environment between test sessions ([runbook §7](runbooks/bootstrap.md#7-control-cost)). Running the app locally doesn't need them. On Ubuntu, Debian or WSL2, all three come from Google's apt repository:
+Only for the `make cloud-*` targets, which operate the deployed environment, for example pausing and resuming it between test sessions ([runbook §7](runbooks/bootstrap.md#7-control-cost)). Running the app locally doesn't need them.
+
+| Target | Needs |
+|---|---|
+| `cloud-status`, `cloud-pause`, `cloud-resume`, `cloud-backup` | `gcloud`, `kubectl`, `gke-gcloud-auth-plugin` |
+| `cloud-admin`, `cloud-create-admin` | the same, plus `jq` |
+| `cloud-backup-sas` | `gcloud`, `az` |
+| `cloud-restore` | the first row, plus `az`, `jq`, `age`, and `psql` and `pg_restore` 16 or newer |
+
+`make doctor` checks only the first row. `jq` and `age` come from `sudo apt install jq age`; for `az`, see the [Azure CLI install guide](https://learn.microsoft.com/cli/azure/install-azure-cli).
+
+On Ubuntu, Debian or WSL2, the first row's three tools come from Google's apt repository:
 
 ```sh
 sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
@@ -151,6 +162,7 @@ Open **http://localhost:5173**:
 | Frontend code changes | nothing; the dev server reloads the page |
 | Stop the APIs, keep the data | `make dev-down` |
 | Stop and wipe the database | `make dev-reset` |
+| Rebuild the Milestone 2 report PDF | `make report` (needs `pdflatex`, `latexmk` and IEEEtran) |
 | List every target | `make help` |
 
 ## Tests and checks
@@ -163,7 +175,10 @@ make lint            # ruff
 make test-db         # all Python tests, against the compose Postgres
 make frontend-test   # ESLint, vitest, production build
 make frontend-image  # the production nginx image (Docker; DOCKER="sudo docker" if needed)
+make docs-check      # document links and repository paths (needs only python3 and git)
 ```
+
+`make format` applies the fixes and formatting that `make lint` checks.
 
 **Use `make test-db`, not `make test`.** Tests marked `db` need a Postgres at `DATABASE_URL`. Plain `make test` doesn't set it, so it **skips** them and still passes. Those skipped tests include every API route test and every auth test. `make test-db` starts the compose Postgres and sets `DATABASE_URL` for you. Each test creates and drops its own schema, so your dev data is untouched.
 

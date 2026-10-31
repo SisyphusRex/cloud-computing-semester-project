@@ -25,6 +25,7 @@ push to main
   tag       prod-YYYY-MM-DD.N + a GitHub Release listing the commits
 ```
 
+- **The `ci` job** is the reusable workflow `wait-for-ci.yml`: it waits for the CI run on the same commit, so nobody is asked to approve a commit that hasn't passed.
 - **While paused** (`make cloud-pause`), the run stops after `plan` with a warning, and nobody is asked to approve. After `make cloud-resume`, start the release again: **Actions → Release → Run workflow** on `main` (or `gh workflow run release.yml --ref main`).
 - **Pull requests** into `main` get an early Terraform plan as a comment (`terraform.yml`). That plan is only a preview. The plan that matters is the one in the release run, because that's the one that gets applied.
 - **Before merging**, `make release-diff` prints the same review sheet locally. On the website, compare the last release with `development`: `https://github.com/SisyphusRex/cloud-computing-semester-project/compare/<last prod-* tag>...development` (the latest tag is at the top of **Releases**).

@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-18
 - **Changes:** the frontend hosting in the [Milestone 1 proposal](../milestones/m1_project_proposal/CS6030_F26_ProjectProposal_LectureIndexer.pdf)
+- **Update (2026-10-31):** `frontend-deploy.yml`, named below, no longer exists. One `release.yml` now deploys the frontend ([release process](../release-process.md)).
 
 ## Context
 

@@ -4,15 +4,15 @@ Open work that isn't scheduled in the [implementation plan](implementation-plan.
 
 ## Finish the user-roles change (contract step)
 
-[ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) moved roles into the database. The release that shipped it kept two things for one release, so that the previous version still works during a rollback:
+[ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) moved roles into the database. The release that shipped it kept two things for one release, so that the previous version still works during a rollback. **Ready to do:** it went out in `prod-2026-10-19.1`, and later releases followed:
 - **The empty `PROFESSOR_EMAILS` key** in `deploy/k8s/overlays/prod/values/values.env`. The previous pods read it from `li-config`, and `kubectl rollout undo` would fail if it were missing. Delete it.
 - **Search's `INSERT` on `users`** (`0002_app_roles.sql`). Sign-in now only claims invitations (an `UPDATE`), so a new migration can `REVOKE INSERT ON users FROM li_search_role`.
 
-Do both in the next release after it, once it's clear no rollback is needed.
+Do both once it's clear no rollback to that release is needed.
 
 ## Drop `users.is_superuser` (contract step)
 
-[ADR 0003](architecture_decision_records/0003-merge-superuser-into-admin.md) merged superuser into admin. The code no longer uses the column, but the previous release still selects it, so it stays for one release. In the release after, once it's clear no rollback is needed:
+[ADR 0003](architecture_decision_records/0003-merge-superuser-into-admin.md) merged superuser into admin. The code no longer uses the column, but the release before it still selects it, so it stayed for one release. **Ready to do:** it went out in `prod-2026-10-31.1`, and three releases followed. Once it's clear no rollback is needed:
 - Add a migration: `ALTER TABLE users DROP COLUMN is_superuser`.
 - Remove `test_admin_revokes_admin_from_a_former_superuser` from `services/ingest/tests/test_admin_routes.py`; it sets the column directly.
 
@@ -78,7 +78,7 @@ Before writing it, check the course page for a required format or length, and ta
 
 ## Give teammates access to the clouds and the app
 
-**Today:** only the project owner can use the Google Cloud and Azure accounts, and in the app, only the owner will be an admin once [ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) is released. Teammates can't pause or resume the environment, read logs, check costs, or manage users.
+**Today:** only the project owner can use the Google Cloud and Azure accounts, and in the app, admin has to be granted account by account ([ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md); check with `make cloud-admin ARGS=list`). Teammates can't pause or resume the environment, read logs, check costs, or manage users.
 
 Keep the teammates' email addresses **out of this repository** (it's public; see ADR 0002). Use the team's own contact list, and grant access by hand in each console.
 
@@ -86,8 +86,8 @@ Keep the teammates' email addresses **out of this repository** (it's public; see
    - **Owner** if they're full co-owners of the project. That includes IAM and billing visibility.
    - Otherwise, enough for `make cloud-*`, the logs and the [database access guide](security/database-access.md): **Editor**, plus **Secret Manager Secret Accessor** on the `db-admin-password` secret only. Editor alone can't read secret values. Check that `make cloud-pause` / `cloud-resume` work for them; they change Cloud SQL and the cluster.
    - Also add each one as a **test user** on the OAuth consent screen (**APIs & Services → OAuth consent screen → Audience**). While the app is in testing mode, Google refuses sign-in for anyone else.
-2. **Azure** (subscription with `rg-li-prod`): invite each teammate as a guest (**Microsoft Entra ID → Users → Invite external user**). Then assign a role on the subscription or on `rg-li-prod` (**Access control (IAM) → Add role assignment**): **Contributor** to manage resources, or **Reader** to look only. Azure for Students may restrict guest invitations; if it does, note what works here.
-3. **App admins**, after the ADR 0002 release, one per teammate:
+2. **Azure** (subscription with `rg-li-prod` and `rg-li-backup`): invite each teammate as a guest (**Microsoft Entra ID → Users → Invite external user**). Then assign a role on the subscription or on `rg-li-prod` (**Access control (IAM) → Add role assignment**): **Contributor** to manage resources, or **Reader** to look only. Azure for Students may restrict guest invitations; if it does, note what works here.
+3. **App admins**, one per teammate:
    ```sh
    make cloud-create-admin EMAIL=<their Google email>
    ```

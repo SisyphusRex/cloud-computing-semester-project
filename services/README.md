@@ -105,10 +105,16 @@ The frontend plays hits in an embedded player at `start_seconds`; it falls back 
 
 ## Logs and metrics
 
-Logs are one JSON object per line for Cloud Logging. Events the monitoring dashboard builds on:
+Logs are one JSON object per line for Cloud Logging. These events are what the monitoring dashboard (not built yet) will build on:
 
 | `event` | Fields |
 |---|---|
 | `http_request` | `service`, `method`, `route`, `status`, `latency_ms` |
 | `youtube_api_call` | `method`, `status`, `quota_units` |
 | `ingest_succeeded` / `ingest_failed` | `video_id`, `lecture_id`, `segments` / `reason` |
+| `user_claimed` | `user_id`, `role` |
+| `sign_in_not_invited` | none |
+| `users_invited` | `actor_id`, `role`, `created` |
+| `user_updated` | `actor_id`, `target_id`, the changed fields |
+| `invitation_deleted` | `actor_id`, `target_id` |
+| `backup_succeeded` / `backup_failed` | `name`, `bytes` / `name` (from the backup CronJob) |
