@@ -29,6 +29,8 @@ PROJECT=$(gcloud config get-value project)
 gcloud storage buckets create gs://$PROJECT-tfstate \
   --location=us-central1 --uniform-bucket-level-access --public-access-prevention
 gcloud storage buckets update gs://$PROJECT-tfstate --versioning
+gcloud storage buckets update gs://$PROJECT-tfstate \
+  --update-labels=app=lecture-indexer,environment=shared,managed-by=hand,component=terraform-state
 ```
 
 ## 3. Apply `bootstrap/`
