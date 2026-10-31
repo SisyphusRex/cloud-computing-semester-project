@@ -1,7 +1,7 @@
 # Smallest Cloud SQL Postgres: shared-core, zonal, private IP only.
 # Apps log in as IAM users (no passwords) through the Cloud SQL Auth Proxy;
-# only the migrate Job uses the built-in admin user, whose password lives in
-# Secret Manager.
+# only the migrate and backup Jobs use the built-in admin user, whose password
+# lives in Secret Manager.
 
 resource "google_sql_database_instance" "this" {
   name                = var.name
@@ -23,7 +23,7 @@ resource "google_sql_database_instance" "this" {
       ssl_mode        = "ENCRYPTED_ONLY"
     }
 
-    # Off to save cost; the nightly pg_dump to Azure Blob is the backup (step 5).
+    # Off to save cost; the nightly pg_dump to Azure Blob is the backup (ADR 0004).
     backup_configuration {
       enabled = false
     }

@@ -17,6 +17,11 @@ locals {
       ksa   = "migrate"
       roles = ["roles/cloudsql.client"]
     }
+    # Also the built-in admin user, to dump the database (ADR 0004).
+    backup = {
+      ksa   = "backup"
+      roles = ["roles/cloudsql.client"]
+    }
   }
 
   workload_roles = merge([
