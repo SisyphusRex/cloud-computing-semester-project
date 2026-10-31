@@ -208,13 +208,15 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SA }}
 
-      - name: 3. Build and push all three images
+      - name: 3. Build and push all four images
         run: |
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
           for svc in ingest search; do
             docker build -f "services/$svc/Dockerfile" -t "$REPO/$svc:$SHA" .
             docker push "$REPO/$svc:$SHA"
           done
+          docker build -t "$REPO/backup:$SHA" backup
+          docker push "$REPO/backup:$SHA"
           docker build -t "$REPO/frontend:$SHA" \
             --build-arg "VITE_API_BASE=https://$API_HOSTNAME" \
             --build-arg "VITE_GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" \

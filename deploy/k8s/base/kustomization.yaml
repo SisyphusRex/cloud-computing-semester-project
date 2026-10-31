@@ -10,5 +10,6 @@ resources:
   - namespace.yaml
   - ingest
   - search
+  - backup
   - ingress.yaml
   - networkpolicy.yaml

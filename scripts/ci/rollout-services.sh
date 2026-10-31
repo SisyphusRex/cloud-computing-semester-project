@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Roll out ingest and search with the images tagged <sha>, from the prod
-# overlay in the current checkout. If either rollout fails, both go back to
+# overlay in the current checkout, which also updates the backup CronJob. If either rollout fails, both go back to
 # their previous version (kubectl rollout undo) and the script exits 1.
 #   scripts/ci/rollout-services.sh <image-repo> <sha>
 # Used by release.yml and rollback.yml; needs kubectl (current context) and kustomize.
@@ -11,7 +11,7 @@ sha=$2
 namespace=${K8S_NAMESPACE:-li}
 deployments=(ingest search)
 
-(cd deploy/k8s/overlays/prod && kustomize edit set image "ingest=$repo/ingest:$sha" "search=$repo/search:$sha")
+(cd deploy/k8s/overlays/prod && kustomize edit set image "ingest=$repo/ingest:$sha" "search=$repo/search:$sha" "backup=$repo/backup:$sha")
 kustomize build deploy/k8s/overlays/prod | kubectl apply -f -
 
 failed=false
