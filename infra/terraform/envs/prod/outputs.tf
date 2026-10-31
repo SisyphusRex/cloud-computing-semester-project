@@ -34,6 +34,10 @@ output "cloudsql" {
   }
 }
 
+output "backup_sas_secret" {
+  value = google_secret_manager_secret.backup_sas.id
+}
+
 output "workload_service_accounts" {
   description = "Annotate each Kubernetes service account with iam.gke.io/gcp-service-account."
   value       = { for k, sa in google_service_account.workload : k => sa.email }

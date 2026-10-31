@@ -82,7 +82,7 @@ run "wiring" {
   }
 
   assert {
-    condition     = toset(keys(output.workload_service_accounts)) == toset(["ingest", "search", "migrate"])
+    condition     = toset(keys(output.workload_service_accounts)) == toset(["ingest", "search", "migrate", "backup"])
     error_message = "expected one service account per workload"
   }
 
@@ -97,6 +97,11 @@ run "wiring" {
   assert {
     condition     = !contains([for k, v in google_project_iam_member.workload : k], "migrate/roles/cloudsql.instanceUser")
     error_message = "migrate logs in with the built-in admin user, not IAM"
+  }
+
+  assert {
+    condition     = !contains([for k, v in google_project_iam_member.workload : k], "backup/roles/cloudsql.instanceUser")
+    error_message = "backup logs in with the built-in admin user, not IAM"
   }
 
   assert {
@@ -141,5 +146,34 @@ run "no_secrets_in_state" {
   assert {
     condition     = module.secrets.values_in_state == {}
     error_message = "secret values must be write-only"
+  }
+
+  # Only the secret: its value is added outside Terraform, so it's never in state.
+  assert {
+    condition     = google_secret_manager_secret_iam_member.backup_sas.member == google_service_account.workload["backup"].member
+    error_message = "only the backup workload may read the upload SAS"
+  }
+}
+
+run "backup_alert" {
+  command = apply
+
+  # No channel, no alert: the default for anyone who hasn't set one up.
+  assert {
+    condition     = length(module.monitoring.backup_alert_ids) == 0
+    error_message = "no alert without a notification channel"
+  }
+}
+
+run "backup_alert_with_a_channel" {
+  command = apply
+
+  variables {
+    alert_notification_channel = "projects/li-test/notificationChannels/1"
+  }
+
+  assert {
+    condition     = length(module.monitoring.backup_alert_ids) == 1
+    error_message = "a notification channel should create the alert"
   }
 }

@@ -20,6 +20,7 @@ env:
   TF_VAR_gcp_region: ${{ vars.GCP_REGION }}
   TF_VAR_azure_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
   TF_VAR_ci_deploy_service_account: ${{ vars.GCP_DEPLOY_SA }}
+  TF_VAR_alert_notification_channel: ${{ vars.ALERT_NOTIFICATION_CHANNEL }}
   # azurerm signs in with GitHub's OIDC token.
   ARM_USE_OIDC: "true"
   ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}

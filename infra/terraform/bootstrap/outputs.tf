@@ -19,3 +19,8 @@ output "deploy_service_account" {
   description = "Passed to envs/prod so it can grant the deploy SA push access to Artifact Registry."
   value       = google_service_account.deploy.email
 }
+
+output "backup_container_url" {
+  description = "BACKUP_CONTAINER_URL in deploy/k8s/overlays/prod/values/values.env."
+  value       = module.backup_storage.container_url
+}
