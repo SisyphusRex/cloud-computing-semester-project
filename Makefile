@@ -6,7 +6,7 @@ KUBECONFORM ?= kubeconform
 TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
 .PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
-	frontend-install frontend-dev frontend-test frontend-image k8s-check release-diff cloud-status cloud-pause cloud-resume \
+	frontend-install frontend-dev frontend-test frontend-image k8s-check docs-check release-diff cloud-status cloud-pause cloud-resume \
 	cloud-backup cloud-backup-sas cloud-restore cloud-create-admin cloud-admin report
 
 help: ## List targets
@@ -68,6 +68,9 @@ k8s-check: ## Render the Kustomize overlays and validate them against Kubernetes
 		$(KUBECONFORM) -strict -summary -ignore-missing-schemas < $$out || exit 1; \
 		python3 scripts/check-k8s-namespaces.py < $$out || exit 1; \
 	done
+
+docs-check: ## Check that document links and repository paths resolve
+	python3 scripts/check-docs.py
 
 release-diff: ## What the next release would deploy (since the last prod-* tag), for review before merging to main
 	@git fetch --tags --quiet 2>/dev/null || true

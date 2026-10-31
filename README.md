@@ -42,7 +42,7 @@ make frontend-install
 make frontend-dev    # http://localhost:5173
 ```
 
-Sign in as `prof@example.edu` (professor) or `student@example.edu`. Registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [implementation plan](docs/milestones/m2_prototype_review/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying). Stop with `Ctrl-C` and `make dev-down`.
+Sign in as `prof@example.edu` (professor) or `student@example.edu`. Registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [implementation plan](docs/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying). Stop with `Ctrl-C` and `make dev-down`.
 
 API reference and configuration: [services/README.md](services/README.md). Run `make help` for every target. CI (`.github/workflows/ci.yml`) runs the tests and checks on every push.
 
@@ -58,4 +58,4 @@ API reference and configuration: [services/README.md](services/README.md). Run `
 | `infra/terraform/` | `bootstrap/` (state + CI identities), `modules/`, `envs/prod/` |
 | `.github/workflows/` | `ci.yml` (lint, tests, image builds, manifest and Terraform checks); deploy workflows come with the first deployment |
 | `scripts/` | Dev and cost-control helpers |
-| `docs/` | Proposal, [implementation plan](docs/milestones/m2_prototype_review/implementation-plan.md), [architecture decision records](docs/architecture_decision_records/) (ADRs), runbooks, [security notes](docs/security/) (e.g. [database access](docs/security/database-access.md)), [how transcript search works](docs/search/transcript-search.md), milestone write-ups |
+| `docs/` | Proposal, [implementation plan](docs/implementation-plan.md), [architecture decision records](docs/architecture_decision_records/) (ADRs), runbooks, [security notes](docs/security/) (e.g. [database access](docs/security/database-access.md)), [how transcript search works](docs/search/transcript-search.md), milestone write-ups |

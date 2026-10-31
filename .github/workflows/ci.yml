@@ -102,6 +102,13 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - run: make k8s-check
 
+  docs:
+    name: Document links
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: make docs-check
+
   frontend:
     name: Frontend lint, tests, build
     runs-on: ubuntu-24.04

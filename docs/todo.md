@@ -1,6 +1,6 @@
 # To do
 
-Open work that isn't scheduled in the [implementation plan](milestones/m2_prototype_review/implementation-plan.md) yet. Move an item there, or delete it, once it's picked up.
+Open work that isn't scheduled in the [implementation plan](implementation-plan.md) yet. Move an item there, or delete it, once it's picked up.
 
 ## Finish the user-roles change (contract step)
 
@@ -18,9 +18,9 @@ Do both in the next release after it, once it's clear no rollback is needed.
 
 ## Write an onboarding guide for new developers
 
-**Today:** what a new teammate needs is spread across the README, [local-development.md](local-development.md), the [runbook](runbooks/bootstrap.md), [release-process.md](release-process.md) and the [implementation plan](milestones/m2_prototype_review/implementation-plan.md), with no starting point or reading order. The docs were also reorganized recently (`docs/milestones/`), so older links and habits point at old places.
+**Today:** what a new teammate needs is spread across the README, [local-development.md](local-development.md), the [runbook](runbooks/bootstrap.md), [release-process.md](release-process.md) and the [implementation plan](implementation-plan.md), with no starting point or reading order. The docs were also reorganized recently (`docs/milestones/`), so older links and habits point at old places.
 
-**Goal:** one `docs/onboarding.md` that gets a new developer from zero to a merged change, linking to the existing docs rather than repeating them:
+**Goal:** one `onboarding.md` in `docs/` that gets a new developer from zero to a merged change, linking to the existing docs rather than repeating them:
 - **What the project is, and a tour of the repository:** what lives in `services/`, `frontend/`, `infra/terraform/`, `deploy/k8s/`, `.github/workflows/`, `scripts/` and `docs/`, and which document to read for what.
 - **Access to request,** and from whom:
   - GitHub collaborator (and `prod` reviewer, if they'll approve releases)

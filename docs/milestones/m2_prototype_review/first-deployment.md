@@ -120,7 +120,7 @@ Optionally, test the rollback once: **Actions → Roll back → Run workflow** w
 
 - Once the certificate is active, `curl -i https://<api_hostname>/search/courses` returns `401` (the request reached the Search API, which needs a sign-in), and `curl <frontend_url>/health` returns `ok` (not `/healthz`: Cloud Run reserves paths ending in `z`).
 - On the Cloud Run URL: sign in with Google, open **Manage** as a professor, register a video with auto-generated captions, search a spoken word as a student, and check that the link opens YouTube at the right moment.
-- Record the results here, and update the status table in [implementation-plan.md](implementation-plan.md).
+- Record the results here, and update the status table in [implementation-plan.md](../../implementation-plan.md).
 
 ### 7. Pause when done
 

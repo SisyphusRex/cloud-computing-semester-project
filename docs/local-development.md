@@ -140,7 +140,7 @@ Open **http://localhost:5173**:
 - **`student@example.edu`**: browse courses and search them.
 - **Any other email** is refused until `prof@example.edu` invites it on the Admin page, or you run `docker compose run --rm --entrypoint li-admin seed add-user EMAIL --role professor`.
 
-**Registering a lecture fails in dev mode**, with a YouTube token error. The Ingest API really calls YouTube with your Google token, so it needs real Google sign-in and your own video with YouTube auto-generated captions. That's described in the implementation plan, [Next: real Google/YouTube test](milestones/m2_prototype_review/implementation-plan.md#next-real-googleyoutube-test-free-before-deploying).
+**Registering a lecture fails in dev mode**, with a YouTube token error. The Ingest API really calls YouTube with your Google token, so it needs real Google sign-in and your own video with YouTube auto-generated captions. That's described in the implementation plan, [Next: real Google/YouTube test](implementation-plan.md#next-real-googleyoutube-test-free-before-deploying).
 
 ## Day to day
 

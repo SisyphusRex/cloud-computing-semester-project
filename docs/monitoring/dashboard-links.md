@@ -1,6 +1,6 @@
 # Dashboard links
 
-Where to look at the running system in the web consoles. Google Cloud links open the project `lecture-indexer-511419` directly; sign in with an account that has access to it. The monitoring dashboard and alerts from step 5 of the [implementation plan](../milestones/m2_prototype_review/implementation-plan.md) will be added here once they exist.
+Where to look at the running system in the web consoles. Google Cloud links open the project `lecture-indexer-511419` directly; sign in with an account that has access to it. The monitoring dashboard and alerts from step 5 of the [implementation plan](../implementation-plan.md) will be added here once they exist.
 
 ## The app
 

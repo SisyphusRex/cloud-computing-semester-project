@@ -1,6 +1,6 @@
 # Real Google/YouTube test: progress log
 
-My run of the [real Google/YouTube test](implementation-plan.md#next-real-googleyoutube-test-free-before-deploying). That section has the general runbook and troubleshooting; this file tracks what I've done. Tick boxes as I go.
+My run of the [real Google/YouTube test](../../implementation-plan.md#next-real-googleyoutube-test-free-before-deploying). That section has the general runbook and troubleshooting; this file tracks what I've done. Tick boxes as I go.
 
 **Accounts** (real addresses are kept out of this file; the professor's is in `.env`)
 - **Channel account**: owns the YouTube channel and the test video; signs in as the professor.

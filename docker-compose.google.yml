@@ -1,4 +1,4 @@
-# Real Google sign-in for the local stack (docs/milestones/m2_prototype_review/implementation-plan.md, "Next: real Google/YouTube test").
+# Real Google sign-in for the local stack (docs/implementation-plan.md, "Next: real Google/YouTube test").
 # Values come from .env (git-ignored): GOOGLE_CLIENT_ID. Sign-in is invite-only:
 # invite your Google email first, e.g.
 #   docker compose run --rm --entrypoint li-admin seed create-admin you@gmail.com

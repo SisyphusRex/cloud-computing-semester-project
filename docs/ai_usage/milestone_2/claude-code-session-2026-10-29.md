@@ -7,7 +7,7 @@
 | Date | 2026-10-29 |
 | Branch | `development` (pushed to `origin/development`) |
 | Commits produced | `0552e98`, plus the commit adding this log |
-| Outcome | An explanation of how transcript search works in Postgres, written up as [`docs/search/transcript-search.md`](../search/transcript-search.md) |
+| Outcome | An explanation of how transcript search works in Postgres, written up as [`docs/search/transcript-search.md`](../../search/transcript-search.md) |
 
 Each entry gives the prompt exactly as typed, then a summary of what Claude did in response.
 

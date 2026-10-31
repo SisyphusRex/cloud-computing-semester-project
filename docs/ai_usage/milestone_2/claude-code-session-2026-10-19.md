@@ -7,7 +7,7 @@
 | Date | 2026-10-19 |
 | Branches | `development`; `main` by a merge the user made |
 | Commits produced | `f673b8c`, `b22596e`, `1f64668`, `24007a5`, `a247919`, `555c487`, `8ab222e`, `04900c5`, `41ae8d5`, `c53db1a`, `053694a`, `ea88ac9`, `522f073`, plus the commit adding this log |
-| Outcome | Invite-only sign-in with admin-managed roles ([ADR 0002](../architecture_decision_records/0002-invite-only-users-and-admin-roles.md)), tested locally end to end and released as `prod-2026-10-19.1` |
+| Outcome | Invite-only sign-in with admin-managed roles ([ADR 0002](../../architecture_decision_records/0002-invite-only-users-and-admin-roles.md)), tested locally end to end and released as `prod-2026-10-19.1` |
 
 Each entry gives the prompt exactly as typed, then a summary of what Claude did in response. Where Claude asked a multiple-choice question, the user's choice is given in brackets. Google account email addresses are written as roles (for example "the owner's Google account"), following entry 20 of the 2026-10-18 log. Long pasted output is shortened.
 
