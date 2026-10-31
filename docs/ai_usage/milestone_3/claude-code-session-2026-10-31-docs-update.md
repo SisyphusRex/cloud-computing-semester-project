@@ -5,8 +5,8 @@
 | Tool | Claude Code (VS Code extension), model Claude Opus 5.5 |
 | User | Theodore Podewil |
 | Date | 2026-10-31 |
-| Branch | `twp__update_docs`; not pushed or merged in this session |
-| Commits produced | `2a3d6af`, `64db4af`, `fe8c296`, `20bf79e`, `9bc3d60`, `e4ee744`, plus the commit adding this log |
+| Branch | `twp__update_docs`; pushed, and merged into `development` by the user. The CI fix went straight to `development`. Not merged to `main` in this session |
+| Commits produced | `2a3d6af`, `64db4af`, `fe8c296`, `20bf79e`, `9bc3d60`, `e4ee744`, `bf2769b` (this log), `f74387b` (CI fix) |
 | Outcome | Every link and repository path in the docs resolves, stale facts are corrected against the code, and each kind of fact has one home. `make docs-check` keeps it that way in CI. An audit of 2,399 baseline text units left none unaccounted for. Start at the [documentation map](../../README.md) |
 
 Each entry gives the prompt exactly as typed, then a summary of what Claude did in response.
@@ -61,6 +61,100 @@ The remaining alerts and dashboard, and the contract-step code changes, were out
 The working tree was already clean, so Claude pushed the 7 commits. After the user merged them, Claude checked CI on `development`. Seven jobs passed, including the Kubernetes and compose checks it couldn't run locally, but the new **Document links** job failed on `frontend/node_modules`.
 
 The bug was in Claude's checker. `.gitignore` has `node_modules/`, which only matches a directory, and a fresh checkout doesn't have one. The check had only ever run on a machine where the directory existed. Claude reproduced the failure in a clean clone, and its first fix failed there too, because `git check-ignore -q` takes one path. The final fix passed in a clean clone, and a broken path still failed.
+
+Claude then committed the fix without checking the branch. The user had switched to `development`, so the commit landed there instead of on `twp__update_docs`. Claude told the user, who chose to push `development` directly. CI then passed all 8 jobs on `f74387b`, which also settled the `make k8s-check` and compose items listed as unverified above.
+
+## 5. Transcript
+
+The user's prompts exactly as typed, each followed by Claude's closing response for that turn, also exact. Short progress notes between tool calls and the tool output aren't included. The first prompt ran through plan mode, and the plan was approved before the response shown here.
+
+### Prompt 1
+
+> come up with a plan to update the documentation.  We do not want to lose any detail, but links may be stale and info may be scattered.
+
+**Claude:**
+
+> The documentation update is finished: every link and repository path in the docs now resolves, and stale facts are corrected against the code. The work is 7 commits on `twp__update_docs`, and nothing has been pushed or merged. Merging to `main` will start a release that needs approval, even though this is almost all docs.
+>
+> ## What changed
+> - **Links:** I fixed all 25 broken links. The cause was `docs/implementation-plan.md` moving and moving back. A new `make docs-check`, also added as a CI job, now fails on broken links, heading anchors and repository paths.
+> - **Stale facts:** corrected against the code. The most serious was the real Google test: it still set `PROFESSOR_EMAILS`, which nothing reads, and it needs a professor invite to work with invite-only sign-in.
+> - **Implementation plan:** cut from 448 lines to about 35, now just status and remaining work. The 44 decisions moved to `docs/architecture.md`, and the reusable test became `docs/runbooks/real-google-test.md`.
+> - **Backups:** the three disagreeing setup procedures are now one, in the backup runbook. `azure-backup-setup.md` moved to `docs/milestones/m3_technical_review/` with the other dated records.
+> - **New pages:** `docs/README.md` (a map of the docs), `docs/onboarding.md`, and `docs/security/review-notes.md`, which collects the M3 security review notes in one list.
+> - **Records:** milestone write-ups keep their content and got a banner pointing to the current procedure. ADRs 0001 and 0002 got dated update notes. In session logs, I changed link targets only.
+>
+> ## No detail lost
+> I compared 2,399 pieces of text from the original docs against the final docs, and 2,200 matched word for word. I reviewed the other 199 by hand:
+>
+> | Outcome | Count |
+> |---|---|
+> | Merged | 72 |
+> | Corrected | 52 |
+> | Removed | 31 |
+> | Done | 23 |
+> | Moved | 21 |
+>
+> All 31 removals were resolved, duplicate or one-time items. The review also caught three real gaps, now restored: the monthly cost totals, the `gh pr create` command for release PRs, and checking the plan comment on the PR. The full ledger is at the end of `docs/ai_usage/milestone_3/claude-code-session-2026-10-31-docs-update.md`.
+>
+> ## Not verified
+> - **`make dev-up`, `make smoke` and the new invite command:** not run, because Docker here needs a `sudo` password. From reading the code, the invite command should work, but try it the first time you run the real Google test.
+> - **`make k8s-check`:** not run, because `kustomize` isn't installed here. No manifests changed.
+> - **Console links:** the two new ones redirect as expected, but I didn't open any of them signed in, so click through them once.
+> - **Onboarding guide:** nobody new has followed it yet; that's now in `docs/todo.md`.
+> - **New CI job:** it hasn't run on GitHub yet. `make docs-check` passes locally.
+>
+> ## Beyond the docs
+> - **Plan change:** I kept the Milestone 2 report checklist in `first-deployment.md` instead of comparing it against the report and deleting it.
+> - **Monitoring dashboard:** it doesn't exist yet and it's a course requirement. The docs now say so plainly.
+> - **Backup checks:** the check of the first scheduled backup is due 2026-11-01, and the environment must be running at 08:00 UTC. That and the other open backup steps are in `docs/todo.md`.
+> - **Cleanup code changes:** the `PROFESSOR_EMAILS`, `is_superuser` and Search `INSERT` cleanups are now ready to do, and `docs/todo.md` marks them that way.
+
+### Prompt 2
+
+> commit and push
+
+**Claude:**
+
+> All 7 commits are pushed to `origin/twp__update_docs`, which is now at `bf2769b`. There was nothing new to commit because the working tree was already clean.
+>
+> I didn't open a PR or merge anything. CI runs when you open a PR, and that will be the first real run of the new `docs` job.
+
+### Prompt 3
+
+> i merged and pushed development
+
+**Claude:**
+
+> The checker is fixed, but the fix isn't pushed, and **I committed it to your local `development` branch by mistake**. You had switched to `development` to merge, and I didn't check the branch before committing. The commit is `f74387b`, and `development` is now one commit ahead of `origin/development`. `twp__update_docs` doesn't have it.
+>
+> **What failed:** 7 of the 8 CI jobs passed on `development`, including the Kubernetes manifests and the compose smoke test, which I couldn't run here. The new `Document links` job failed because of a bug in my checker. `.gitignore` lists `node_modules/`, which only matches an actual directory, and CI's fresh checkout doesn't have one, so a mention of it counted as a broken path. My local runs passed because the directory exists here, and I never tried a clean clone.
+>
+> **The fix:** the check now passes in a clean clone and still catches broken links and paths. My first attempt failed in that same clone, so the commit contains the corrected version. It also adds an entry about this failure to the session log.
+>
+> **What's still broken:** `development` stays red until this is pushed. Fix it before merging to `main`, because the release waits for CI to pass on the same commit and won't get to approval on this one.
+>
+> **Your call:**
+> - **Push `development` directly (my recommendation):** it's a clean fast-forward of one small commit, and the fastest way to get CI green.
+> - **Go through `twp__update_docs` instead:** I'd move the commit there and put local `development` back to `bf2769b`, then you'd merge it as usual.
+>
+> Which would you like?
+
+### Prompt 4
+
+> go ahead and push development
+
+**Claude:**
+
+> CI is green on `development`: all 8 jobs passed on `f74387b`, including `Document links`. It's now safe to merge to `main`, which will start a release that needs approval.
+>
+> `twp__update_docs` doesn't have this fix, because it went straight to `development`. That only matters if you keep using that branch. You're also still on `development` locally.
+
+### Prompt 5
+
+> add my prompts and your responses from this session to a file in docs/ai_usage/milestone_3
+
+**Claude:** added this transcript to this session's existing log, and updated the header and entry 4.
 
 <details>
 <summary>Ledger: the 199 baseline units not found verbatim</summary>
