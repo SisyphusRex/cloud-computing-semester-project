@@ -124,7 +124,7 @@ To query the database by hand (it has only a private IP), see [Accessing the pro
 
 ## 7. Control cost
 
-Rough monthly costs while everything runs. Check the [GCP pricing calculator](https://cloud.google.com/products/calculator) before relying on them.
+Rough monthly costs while everything runs: about $40–60 in total, or about $9 while [paused](#between-test-sessions-pause). Check the [GCP pricing calculator](https://cloud.google.com/products/calculator) before relying on them.
 
 | Item | Approx. / month |
 |---|---|

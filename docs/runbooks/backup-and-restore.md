@@ -62,7 +62,7 @@ The order matters. Backups need values from Terraform, and Kubernetes can't star
      --format='value(name)'
    gh variable set ALERT_NOTIFICATION_CHANNEL --body "<the name it printed>"
    ```
-5. **Release the Terraform changes.** This creates the `backup` service account, its IAM bindings, the empty `backup-sas` secret and the alert, and should destroy nothing. Wait for CI, check the plan in the release run, and approve.
+5. **Release the Terraform changes.** This creates the `backup` service account, its IAM bindings, the empty `backup-sas` secret and the alert, and should destroy nothing. Wait for CI, check the Terraform plan comment on the pull request and the plan in the release run, and approve.
 6. **Create the SAS,** before the next release, or the backup job can't start:
    ```sh
    make cloud-backup-sas
