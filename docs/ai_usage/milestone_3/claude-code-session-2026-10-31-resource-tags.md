@@ -5,8 +5,8 @@
 | Tool | Claude Code (VS Code extension), model Claude Opus 5.5 |
 | User | Theodore Podewil |
 | Date | 2026-10-31 |
-| Branch | `twp__resource_tags`; merged to `main` by the user |
-| Commits produced | `e2afa3c` and `51d3c7f` on the branch, `8f3a367` and `0fe977b` on `main` |
+| Branch | `twp__resource_tags`; rebased and merged through `development` to `main` by the user |
+| Commits produced | `8f3a367`, `0fe977b`, plus the commits adding this log |
 | Release | `prod-2026-10-31.4` |
 | Outcome | Every cloud resource that can carry labels or tags now has `app`, `environment`, `managed-by` and `component`, in both clouds, with no resource replaced or destroyed. The scheme, and the resources that can't be labelled, are in [dashboard-links.md](../../monitoring/dashboard-links.md) |
 
