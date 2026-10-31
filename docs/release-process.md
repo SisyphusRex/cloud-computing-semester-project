@@ -106,14 +106,16 @@ A rollback (below) redeploys old code but keeps the database as it is. So every 
 
 ## When something goes wrong
 
-| What happened | What to do |
-|---|---|
-| **The new API version crashes or never becomes ready** | Nothing: it's automatic. The rolling update keeps the old pod serving until the new one passes `/readyz`, and the release runs `kubectl rollout undo`. The run fails; fix the bug and merge again |
-| **The new frontend fails its check** | Nothing: traffic stays on the old revision. The run fails |
-| **Released, but the API misbehaves** | Roll back: **Actions → Roll back → Run workflow**, enter the last good `prod-*` tag, and approve it (or `gh workflow run rollback.yml --ref main -f tag=<tag>`). It redeploys that release's images and config, with no migrations and no Terraform. Then **revert the bad commit on `development` and merge**, or the next release ships it again |
-| **Released, but the frontend misbehaves** | **Roll back** as above, or, fastest, move traffic back to the previous revision: in the Cloud Console, **Cloud Run → li-frontend → Revisions → Manage traffic**, and give the previous revision 100%. With gcloud: `gcloud run services update-traffic li-frontend --region us-central1 --to-revisions=<previous>=100` |
-| **A migration damaged data** | Restore the backup the release took (its ID is in the release summary): in the Cloud Console, **SQL → li-pg → Backups**, pick the "before release …" backup and **Restore** to `li-pg`; or `gcloud sql backups restore <id> --restore-instance li-pg`. **This overwrites the whole database; anything written since the backup is lost.** Then roll back the code with `rollback.yml` |
-| **A Terraform change broke something** | Revert the commit on `development` and merge; the next release plans the reverse change. Check that plan especially carefully. A deleted stateful resource (the database) can only come back from a backup |
-| **The release run itself failed partway** | Read the failed step. Steps before it took effect (an apply, a backup, migrations); steps after it didn't. Usually: fix, merge, and the next release continues from there |
+**If a release fails its own checks, you don't need to undo anything.** The old API pods keep serving until the new ones pass `/readyz`, a failed rollout runs `kubectl rollout undo`, and the frontend gets traffic only after its check passes. Fix the bug and merge again. If the run stopped partway, read the failed step: the steps before it took effect (an apply, a backup, migrations) and the steps after it didn't. The next release continues from there.
 
-Rollback needs the images to still exist. Artifact Registry keeps the newest 10 versions of each image, plus anything under 30 days old, so recent tags are always available.
+**If the problem reached production:**
+
+| What's wrong | What to do |
+|---|---|
+| **Bad code** (API or frontend) | Run the [rollback](#on-the-website-no-gh-needed) with the last good `prod-*` tag and approve it, or use `gh workflow run rollback.yml --ref main -f tag=<tag>`. Then **revert the bad commit on `development` and merge**, or the next release ships it again |
+| **Bad data** (from a migration) | Restore the backup the release took, then run the rollback as above. **Restoring overwrites the whole database; anything written since the backup is lost.** The backup ID is in the release summary. Use the Cloud Console (**SQL → li-pg → Backups**, pick "before release …", then **Restore** to `li-pg`) or `gcloud sql backups restore <id> --restore-instance li-pg` |
+| **Bad infrastructure** (Terraform) | Revert the commit on `development` and merge; the next release plans the reverse change. Check that plan especially carefully. A deleted stateful resource (the database) can only come back from a backup |
+
+The rollback redeploys that tag's images and config, with no migrations and no Terraform, then checks the API through the load balancer. It **fails** if the environment is paused (nothing was rolled back; run `make cloud-resume` and start it again), if the tag's images are gone, or if the API doesn't answer afterwards. Artifact Registry keeps the newest 10 versions of each image, plus anything under 30 days old, so recent tags are always available.
+
+**Emergency, frontend only:** moving traffic back is faster than a rollback, because it doesn't wait for a run. In the Cloud Console, open **Cloud Run → li-frontend → Revisions → Manage traffic** and give the previous revision 100%, or use `gcloud run services update-traffic li-frontend --region us-central1 --to-revisions=<previous>=100`.

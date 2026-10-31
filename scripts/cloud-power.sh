@@ -86,7 +86,7 @@ finish() {  # finish <message...>
   printf '%s\n' "$@"
 }
 
-# The release and rollback workflows skip while this annotation is set
+# The release and rollback workflows don't deploy while this annotation is set
 # (scripts/ci/check-paused.sh). Set first on pause and removed last on resume,
 # so a half-finished pause or resume still counts as paused.
 PAUSED_ANNOTATION=lecture-indexer/paused

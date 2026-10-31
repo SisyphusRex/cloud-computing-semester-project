@@ -69,10 +69,16 @@ jobs:
         id: paused
         run: scripts/ci/check-paused.sh sql+k8s
 
+      # A rollback that did nothing must not show up as a green run.
+      - name: Stop if the environment is paused
+        if: steps.paused.outputs.paused == 'true'
+        run: |
+          echo "::error::Nothing was rolled back: the environment is paused"
+          exit 1
+
       # Every release pushes all three images, but the registry deletes old
       # ones (keeps the newest 10 per image, or anything under 30 days).
       - name: Images for this release still exist
-        if: steps.paused.outputs.paused == 'false'
         run: |
           sha=$(git rev-parse HEAD)
           echo "SHA=$sha" >> "$GITHUB_ENV"
@@ -84,15 +90,25 @@ jobs:
           done
 
       - name: Roll back ingest and search
-        if: steps.paused.outputs.paused == 'false'
         run: scripts/ci/rollout-services.sh "$REPO" "$SHA"
 
       - name: Roll back the frontend
-        if: steps.paused.outputs.paused == 'false'
         run: scripts/ci/deploy-frontend.sh "$REPO/frontend:$SHA"
 
+      # Inline, not a shared script: the checkout is the old tag, which may not
+      # have one. Same check as release.yml: 401 = reached the Search API.
+      - name: Check the API through the load balancer
+        run: |
+          host=$(sed -n 's/^API_HOSTNAME=//p' deploy/k8s/overlays/prod/values/values.env)
+          for _ in $(seq 60); do
+            code=$(curl -sk -m 10 -o /dev/null -w '%{http_code}' "https://$host/search/courses" || true)
+            [[ $code == 401 ]] && { echo "API answers (401)"; exit 0; }
+            sleep 10
+          done
+          echo "::error::$TAG is deployed, but the API isn't answering through the load balancer (last status: $code)"
+          exit 1
+
       - name: Summary
-        if: steps.paused.outputs.paused == 'false'
         run: |
           {
             echo "### Rolled back to \`$TAG\` (\`${SHA:0:7}\`)"

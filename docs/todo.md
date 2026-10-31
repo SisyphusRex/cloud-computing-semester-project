@@ -55,7 +55,7 @@ Two improvements, independent of each other:
 2. **A maintenance banner while paused (more moving parts).** Show a banner on every page while the environment is paused, before anyone signs in.
    - `make cloud-pause` sets a flag the frontend can read, and `make cloud-resume` clears it as its last step, next to the namespace annotation.
    - The flag could be a Cloud Run environment variable read at container start (`gcloud run services update li-frontend --update-env-vars LI_PAUSED=1`, served by nginx as a small `/status.json`), or a static file in a public bucket.
-   - Keep other tools from clearing the flag: releases and `rollback.yml` already skip while paused, but Terraform would remove an environment variable set by `gcloud`. Add `template[0].containers[0].env` to `ignore_changes` in [`modules/cloud-run-frontend`](../infra/terraform/modules/cloud-run-frontend/main.tf), or use the bucket file instead.
+   - Keep other tools from clearing the flag: releases and `rollback.yml` already don't deploy while paused, but Terraform would remove an environment variable set by `gcloud`. Add `template[0].containers[0].env` to `ignore_changes` in [`modules/cloud-run-frontend`](../infra/terraform/modules/cloud-run-frontend/main.tf), or use the bucket file instead.
    - Update `cloud-power.sh`'s step list and the runbook.
 
 ## Report on the Milestone 2 deliverables
