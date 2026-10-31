@@ -60,3 +60,17 @@ resource "azurerm_role_assignment" "plan_reader" {
   role_definition_name = "Reader"
   principal_id         = azurerm_user_assigned_identity.plan.principal_id
 }
+
+# Database backups live here, not in envs/prod: `terraform destroy` there deletes
+# the database, and must leave its backups behind (ADR 0004).
+resource "azurerm_resource_group" "backup" {
+  name     = "rg-li-backup"
+  location = var.azure_location
+}
+
+module "backup_storage" {
+  source            = "../modules/azure-backup-storage"
+  account_name      = "libackup${substr(sha1(var.azure_subscription_id), 0, 10)}"
+  resource_group_id = azurerm_resource_group.backup.id
+  location          = azurerm_resource_group.backup.location
+}

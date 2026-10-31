@@ -83,7 +83,12 @@ module "cloudsql" {
 module "secrets" {
   source = "../../modules/secrets"
   secrets = {
-    db-admin-password = { accessors = { migrate = google_service_account.workload["migrate"].member } }
+    db-admin-password = {
+      accessors = {
+        migrate = google_service_account.workload["migrate"].member
+        backup  = google_service_account.workload["backup"].member
+      }
+    }
   }
   secret_values = {
     db-admin-password = ephemeral.random_password.db_admin.result
@@ -92,6 +97,30 @@ module "secrets" {
     db-admin-password = var.db_admin_password_version
   }
   depends_on = [google_project_service.this]
+}
+
+# The upload SAS for backups. Terraform owns only the secret and who can read it:
+# scripts/cloud-backup-sas.sh adds the value, so it never lands in state (ADR 0004).
+resource "google_secret_manager_secret" "backup_sas" {
+  secret_id = "backup-sas"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.this]
+}
+
+resource "google_secret_manager_secret_iam_member" "backup_sas" {
+  secret_id = google_secret_manager_secret.backup_sas.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = google_service_account.workload["backup"].member
+}
+
+module "monitoring" {
+  source               = "../../modules/monitoring"
+  notification_channel = var.alert_notification_channel
+  depends_on           = [google_project_service.this]
 }
 
 # The API's public address. Without a domain of our own, sslip.io maps

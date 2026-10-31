@@ -44,3 +44,9 @@ variable "db_admin_password_version" {
   type        = number
   default     = 1
 }
+
+variable "alert_notification_channel" {
+  description = "Cloud Monitoring channel for alerts: only its name, so no email address reaches this public repo's logs or plan files. Empty creates no alert."
+  type        = string
+  default     = ""
+}
