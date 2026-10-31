@@ -207,6 +207,11 @@ jobs:
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SA }}
+      # Again: it activates the current credentials, and a release with no infra
+      # changes or migrations skipped the sign-in above, so gcloud has no account.
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          install_components: kubectl,gke-gcloud-auth-plugin
 
       - name: 3. Build and push all four images
         run: |
