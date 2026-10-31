@@ -2,6 +2,8 @@
 
 My run of the [real Google/YouTube test](../../runbooks/real-google-test.md). That section has the general runbook and troubleshooting; this file tracks what I've done. Tick boxes as I go.
 
+> **Record of 2026-10-18.** Steps below are as they were then: for example, `PROFESSOR_EMAILS` has since been replaced by invite-only sign-in. For a new run, use the [real Google test](../../runbooks/real-google-test.md).
+
 **Accounts** (real addresses are kept out of this file; the professor's is in `.env`)
 - **Channel account**: owns the YouTube channel and the test video; signs in as the professor.
 - **Student account**: a second Google account, for checking the student view.

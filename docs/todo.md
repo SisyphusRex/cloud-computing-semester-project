@@ -31,34 +31,9 @@ Do both once it's clear no rollback to that release is needed.
 - Add a migration: `ALTER TABLE users DROP COLUMN is_superuser`.
 - Remove `test_admin_revokes_admin_from_a_former_superuser` from `services/ingest/tests/test_admin_routes.py`; it sets the column directly.
 
-## Write an onboarding guide for new developers
+## Test the onboarding guide
 
-**Today:** what a new teammate needs is spread across the README, [local-development.md](local-development.md), the [runbook](runbooks/bootstrap.md), [release-process.md](release-process.md) and the [implementation plan](implementation-plan.md), with no starting point or reading order. The docs were also reorganized recently (`docs/milestones/`), so older links and habits point at old places.
-
-**Goal:** one `onboarding.md` in `docs/` that gets a new developer from zero to a merged change, linking to the existing docs rather than repeating them:
-- **What the project is, and a tour of the repository:** what lives in `services/`, `frontend/`, `infra/terraform/`, `deploy/k8s/`, `.github/workflows/`, `scripts/` and `docs/`, and which document to read for what.
-- **Access to request,** and from whom:
-  - GitHub collaborator (and `prod` reviewer, if they'll approve releases)
-  - a test user on the OAuth consent screen
-  - GCP IAM roles, only if they'll use `make cloud-*` or the console
-  - Azure access, if needed
-- **Local setup:** `make doctor`, then [local-development.md](local-development.md) (dev sign-in, `make dev-up`, the frontend, tests). Optionally the cloud tools.
-- **How we work:**
-  - branch from `development`; open a pull request or merge into `main`
-  - every push to `main` is a release that someone approves ([release-process.md](release-process.md))
-  - commit message style
-- **Conventions that bite:**
-  - expand-then-contract migrations, and never editing a released one
-  - unique test file names
-  - `li_common.logs`, not `logging`
-  - Kubernetes values in `values.env`
-  - checking `make k8s-check` before touching manifests
-- **Cost etiquette:** pause the environment after testing (`make cloud-pause`), and check with `make cloud-status`.
-- **Where to look when something breaks:** [dashboard links](monitoring/dashboard-links.md), CI logs, the failed-run notes in [first-deployment.md](milestones/m2_prototype_review/first-deployment.md).
-- **A first task** that touches the whole flow: for example a small API or frontend change, taken through CI and one release.
-- **Link it** from the top of the README.
-
-Have someone who hasn't worked on the project follow it, and fix what trips them up.
+Have someone who hasn't worked on the project follow [onboarding.md](onboarding.md), and fix what trips them up.
 
 ## Tell users when the environment is paused
 

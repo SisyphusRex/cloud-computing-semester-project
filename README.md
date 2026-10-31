@@ -4,6 +4,8 @@ Timestamped keyword search over recorded lectures. A professor registers a YouTu
 
 CS 6030 Cloud Computing semester project, Western Michigan University, Fall 2026: Theodore Podewil, Joshua Jubenville, Andrew Wojciechowski.
 
+New here? Start with **[onboarding](docs/onboarding.md)**. The [documentation map](docs/README.md) lists everything else.
+
 ## Architecture
 
 | Layer | Service | Cloud |
@@ -16,7 +18,7 @@ CS 6030 Cloud Computing semester project, Western Michigan University, Fall 2026
 | Secrets / registry / monitoring | Secret Manager, Artifact Registry, Cloud Monitoring | Google Cloud |
 | CI/CD / IaC | GitHub Actions (keyless OIDC), Terraform | both |
 
-Full rationale: [the proposal](docs/milestones/m1_project_proposal/). The proposal put the front end on Azure Static Web Apps; our Azure subscription can't deploy it, so it moved to Cloud Run ([ADR 0001](docs/architecture_decision_records/0001-frontend-on-cloud-run.md)).
+The system as deployed, with its decisions: [architecture](docs/architecture.md). Original rationale: [the proposal](docs/milestones/m1_project_proposal/). The proposal put the front end on Azure Static Web Apps; our Azure subscription can't deploy it, so it moved to Cloud Run ([ADR 0001](docs/architecture_decision_records/0001-frontend-on-cloud-run.md)).
 
 ## Run locally
 
@@ -58,4 +60,4 @@ API reference and configuration: [services/README.md](services/README.md). Run `
 | `infra/terraform/` | `bootstrap/` (state + CI identities), `modules/`, `envs/prod/` |
 | `.github/workflows/` | `ci.yml` (lint, tests, image builds, manifest, Terraform and document checks), `release.yml` and `rollback.yml` ([release process](docs/release-process.md)), `terraform.yml` (plan comments on pull requests), `wait-for-ci.yml` |
 | `scripts/` | Dev, CI, backup and cost-control helpers |
-| `docs/` | Proposal, [implementation plan](docs/implementation-plan.md), [architecture decision records](docs/architecture_decision_records/) (ADRs), runbooks, [security notes](docs/security/) (e.g. [database access](docs/security/database-access.md)), [how transcript search works](docs/search/transcript-search.md), milestone write-ups |
+| `docs/` | [Documentation map](docs/README.md): [onboarding](docs/onboarding.md), [architecture](docs/architecture.md), [implementation plan](docs/implementation-plan.md), [to-do list](docs/todo.md), [ADRs](docs/architecture_decision_records/), runbooks, [security notes](docs/security/) (e.g. [database access](docs/security/database-access.md)), [how transcript search works](docs/search/transcript-search.md), milestone write-ups |
