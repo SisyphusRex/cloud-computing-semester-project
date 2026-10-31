@@ -25,3 +25,8 @@ variable "placeholder_image" {
   type        = string
   default     = "us-docker.pkg.dev/cloudrun/container/hello"
 }
+
+variable "labels" {
+  description = "Labels for the console; see docs/monitoring/dashboard-links.md."
+  type        = map(string)
+}

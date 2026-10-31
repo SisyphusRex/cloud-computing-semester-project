@@ -24,6 +24,8 @@ resource "google_container_cluster" "this" {
   name     = var.name
   location = var.region
 
+  resource_labels = var.labels
+
   enable_autopilot    = true
   deletion_protection = false
 

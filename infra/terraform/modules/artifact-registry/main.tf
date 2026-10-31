@@ -2,6 +2,8 @@ resource "google_artifact_registry_repository" "this" {
   location      = var.region
   repository_id = var.name
   format        = "DOCKER"
+  description   = "Lecture Indexer container images, tagged by commit SHA"
+  labels        = var.labels
 
   # Keep storage (and cost) bounded: the last 10 versions of each image, plus
   # anything newer than 30 days.

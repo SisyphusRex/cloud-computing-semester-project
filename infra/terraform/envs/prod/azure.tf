@@ -4,4 +4,8 @@
 resource "azurerm_resource_group" "this" {
   name     = "rg-${var.name}-prod"
   location = var.azure_location
+  tags = merge(local.labels, {
+    component = "unused"
+    purpose   = "Empty; backups are in rg-li-backup"
+  })
 }

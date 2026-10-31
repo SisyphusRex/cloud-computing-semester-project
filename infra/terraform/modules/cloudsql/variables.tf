@@ -42,3 +42,8 @@ variable "iam_service_accounts" {
   type        = map(string)
   default     = {}
 }
+
+variable "labels" {
+  description = "Labels for the console; see docs/monitoring/dashboard-links.md."
+  type        = map(string)
+}

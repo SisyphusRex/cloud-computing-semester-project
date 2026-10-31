@@ -5,15 +5,32 @@
 
 data "azurerm_subscription" "current" {}
 
+# The keys from envs/prod's labels; these resources outlive that environment.
+locals {
+  tags = {
+    app         = "lecture-indexer"
+    environment = "shared"
+    managed-by  = "terraform"
+  }
+}
+
 resource "azurerm_resource_group" "ci" {
   name     = "rg-li-ci"
   location = var.azure_location
+  tags = merge(local.tags, {
+    component = "ci-identity"
+    purpose   = "Identities GitHub Actions signs in with"
+  })
 }
 
 resource "azurerm_user_assigned_identity" "github" {
   name                = "id-li-github"
   resource_group_name = azurerm_resource_group.ci.name
   location            = azurerm_resource_group.ci.location
+  tags = merge(local.tags, {
+    component = "ci-identity"
+    purpose   = "GitHub Actions: release and deploy jobs (Contributor)"
+  })
 }
 
 resource "azurerm_federated_identity_credential" "github" {
@@ -34,6 +51,10 @@ resource "azurerm_user_assigned_identity" "plan" {
   name                = "id-li-github-plan"
   resource_group_name = azurerm_resource_group.ci.name
   location            = azurerm_resource_group.ci.location
+  tags = merge(local.tags, {
+    component = "ci-identity"
+    purpose   = "GitHub Actions: read-only Terraform plans (Reader)"
+  })
 }
 
 resource "azurerm_federated_identity_credential" "plan" {
@@ -66,6 +87,10 @@ resource "azurerm_role_assignment" "plan_reader" {
 resource "azurerm_resource_group" "backup" {
   name     = "rg-li-backup"
   location = var.azure_location
+  tags = merge(local.tags, {
+    component = "database-backups"
+    purpose   = "Nightly encrypted database backups"
+  })
 }
 
 module "backup_storage" {
@@ -73,4 +98,8 @@ module "backup_storage" {
   account_name      = "libackup${substr(sha1(var.azure_subscription_id), 0, 10)}"
   resource_group_id = azurerm_resource_group.backup.id
   location          = azurerm_resource_group.backup.location
+  tags = merge(local.tags, {
+    component = "database-backups"
+    purpose   = "Nightly encrypted database backups"
+  })
 }

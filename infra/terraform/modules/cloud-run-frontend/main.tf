@@ -14,6 +14,8 @@ resource "google_cloud_run_v2_service" "this" {
   location            = var.region
   ingress             = "INGRESS_TRAFFIC_ALL"
   deletion_protection = false
+  description         = "Lecture Indexer website: the React app served by nginx"
+  labels              = var.labels
 
   template {
     service_account = google_service_account.this.email

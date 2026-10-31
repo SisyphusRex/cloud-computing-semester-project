@@ -30,6 +30,7 @@ resource "google_compute_global_address" "private_services" {
   address_type  = "INTERNAL"
   prefix_length = 20
   network       = google_compute_network.this.id
+  labels        = var.labels
 }
 
 resource "google_service_networking_connection" "private_services" {

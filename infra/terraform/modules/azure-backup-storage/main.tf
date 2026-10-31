@@ -10,6 +10,7 @@ resource "azapi_resource" "account" {
   name      = var.account_name
   parent_id = var.resource_group_id
   location  = var.location
+  tags      = var.tags
 
   body = {
     kind = "StorageV2"

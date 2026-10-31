@@ -27,3 +27,8 @@ variable "delete_after_days" {
   type        = number
   default     = 35
 }
+
+variable "tags" {
+  description = "Tags for the portal; see docs/monitoring/dashboard-links.md."
+  type        = map(string)
+}

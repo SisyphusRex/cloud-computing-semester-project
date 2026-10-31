@@ -16,3 +16,8 @@ variable "secret_value_versions" {
   type        = map(number)
   default     = {}
 }
+
+variable "labels" {
+  description = "Labels for the console; see docs/monitoring/dashboard-links.md."
+  type        = map(string)
+}

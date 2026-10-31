@@ -6,6 +6,7 @@ resource "google_monitoring_alert_policy" "backup_failed" {
   count        = var.notification_channel == "" ? 0 : 1
   display_name = "Database backup failed"
   combiner     = "OR"
+  user_labels  = var.labels
 
   conditions {
     display_name = "A backup Job gave up"

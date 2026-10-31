@@ -25,3 +25,8 @@ variable "pods_range_name" {
 variable "services_range_name" {
   type = string
 }
+
+variable "labels" {
+  description = "Labels for the console; see docs/monitoring/dashboard-links.md."
+  type        = map(string)
+}

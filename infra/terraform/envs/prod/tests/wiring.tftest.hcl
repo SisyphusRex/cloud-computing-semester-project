@@ -165,6 +165,31 @@ run "backup_alert" {
   }
 }
 
+run "labels" {
+  command = apply
+
+  # GCP only rejects a bad label at apply time, partway through a release.
+  assert {
+    condition     = alltrue([for k, v in local.labels : can(regex("^[a-z0-9_-]{1,63}$", k)) && can(regex("^[a-z0-9_-]{1,63}$", v))])
+    error_message = "GCP labels allow only lowercase letters, digits, - and _ (63 characters at most)"
+  }
+
+  assert {
+    condition     = google_compute_global_address.api.labels["component"] == "api-load-balancer" && google_compute_global_address.api.labels["app"] == "lecture-indexer"
+    error_message = "the API address should have the shared labels and its component"
+  }
+
+  assert {
+    condition     = google_secret_manager_secret.backup_sas.labels["component"] == "secrets" && google_secret_manager_secret.backup_sas.labels["app"] == "lecture-indexer"
+    error_message = "the backup-sas secret should have the shared labels and its component"
+  }
+
+  assert {
+    condition     = azurerm_resource_group.this.tags["app"] == "lecture-indexer" && azurerm_resource_group.this.tags["purpose"] != ""
+    error_message = "the resource group should have the shared tags and a purpose"
+  }
+}
+
 run "backup_alert_with_a_channel" {
   command = apply
 

@@ -4,6 +4,7 @@
 resource "google_secret_manager_secret" "this" {
   for_each  = var.secrets
   secret_id = each.key
+  labels    = var.labels
 
   replication {
     auto {}

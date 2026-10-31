@@ -16,6 +16,7 @@ resource "google_sql_database_instance" "this" {
     disk_type         = "PD_SSD"
     disk_size         = 10
     activation_policy = "ALWAYS"
+    user_labels       = var.labels
 
     ip_configuration {
       ipv4_enabled    = false
