@@ -11,7 +11,7 @@ Where to find things, and where new things belong. New to the project? Start wit
 | Understand the design and why it's that way | [Architecture](architecture.md), then the [ADRs](architecture_decision_records/) |
 | Learn how search works | [Transcript search](search/transcript-search.md) |
 | Call the APIs or configure the services | [Services](../services/README.md) |
-| See where the project stands | [Implementation plan](implementation-plan.md) and [to-do list](todo.md) |
+| See where the project stands | [Implementation plan](implementation-plan.md), [to-do list](todo.md) and [wishlist](wishlist.md) |
 | Ship or undo a change | [Release process](release-process.md) |
 | Provision, pause or tear down the cloud environment | [Bootstrap runbook](runbooks/bootstrap.md) |
 | Back up or restore the database | [Backup runbook](runbooks/backup-and-restore.md) |
@@ -33,6 +33,7 @@ Each kind of fact has one home. Other pages link to it instead of repeating it.
 | A procedure someone will repeat | A [runbook](runbooks/) |
 | A value from our environment | [Environment and dashboard links](monitoring/dashboard-links.md) |
 | Open work | [todo.md](todo.md), or [implementation-plan.md](implementation-plan.md) if it's a planned step |
+| An optional improvement | [wishlist.md](wishlist.md) |
 | A note for the security review | [security/review-notes.md](security/review-notes.md) |
 | What happened on a date | A record in that milestone's folder |
 

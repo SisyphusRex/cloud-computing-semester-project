@@ -9,7 +9,7 @@ Everything earlier work set aside for the [M3 security review](../milestones/m3_
 - **A stolen admin session reaches the top tier** ([ADR 0003](../architecture_decision_records/0003-merge-superuser-into-admin.md)). An attacker with an admin's token, which lasts about an hour, could grant admin or disable other admins, but not disable or demote the account they're using. `user_audit` records it, and `li-admin` can restore access.
 - **YouTube scope.** The proposal says the professor's YouTube token is requested with a read-only scope, but `captions.list` and `captions.download` only accept `youtube.force-ssl`. The token is used for one request and never stored or logged. Correct this in the M3 security review.
 - **Consent screen wording** (from the [real test's follow-ups](../milestones/m2_prototype_review/real-youtube-test.md#8-results-2026-10-18)). It tells professors the app can "see, edit, and permanently delete" their YouTube videos; explain that only GET calls are made and the token is never stored.
-- **Sign-in persistence, if it's ever done** ([to-do list](../todo.md#keep-the-sign-in-across-page-refreshes)). Keeping the session in `sessionStorage` exposes the ID token to injected scripts until it expires; note the trade-off.
+- **Sign-in persistence, if it's ever done** ([wishlist](../wishlist.md#keep-the-sign-in-across-page-refreshes)). Keeping the session in `sessionStorage` exposes the ID token to injected scripts until it expires; note the trade-off.
 
 ## Secrets management
 

@@ -73,6 +73,6 @@ make cloud-status
 
 ## A first task
 
-Take a small change through the whole flow. For example, the clearer message for an unreachable API in the [to-do list](todo.md#tell-users-when-the-environment-is-paused) touches the frontend and needs a vitest case. Branch, open a pull request into `development`, get CI green, and watch it go out in the next release.
+Take a small change through the whole flow. For example, the clearer message for an unreachable API in the [wishlist](wishlist.md#tell-users-when-the-environment-is-paused) touches the frontend and needs a vitest case. Branch, open a pull request into `development`, get CI green, and watch it go out in the next release.
 
 This guide hasn't been tested by someone new yet. If something trips you up, fix it here.
