@@ -538,10 +538,13 @@
     },
     {
       "id": 13,
-      "title": "CPU by pod",
+      "title": "Ingest pods",
+      "description": "Counted from the last 15 minutes, so a paused environment shows 0.",
+      "type": "stat",
+      "timeFrom": "15m",
       "gridPos": {
         "h": 7,
-        "w": 8,
+        "w": 12,
         "x": 0,
         "y": 27
       },
@@ -549,80 +552,28 @@
         "type": "stackdriver",
         "uid": "li-gcp"
       },
-      "targets": [
-        {
-          "queryType": "timeSeriesList",
-          "datasource": {
-            "type": "stackdriver",
-            "uid": "li-gcp"
-          },
-          "timeSeriesList": {
-            "projectName": "lecture-indexer-511419",
-            "filters": [
-              "metric.type",
-              "=",
-              "kubernetes.io/container/cpu/core_usage_time",
-              "AND",
-              "resource.label.namespace_name",
-              "=",
-              "li",
-              "AND",
-              "resource.label.container_name",
-              "=",
-              "app"
-            ],
-            "perSeriesAligner": "ALIGN_RATE",
-            "crossSeriesReducer": "REDUCE_SUM",
-            "groupBys": [
-              "resource.label.pod_name"
-            ],
-            "alignmentPeriod": "cloud-monitoring-auto",
-            "view": "FULL",
-            "preprocessor": "none"
-          },
-          "aliasBy": "{{resource.label.pod_name}}",
-          "refId": "A"
-        }
-      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "cores",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "spanNulls": false,
-            "showPoints": "never"
-          }
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0"
         },
         "overrides": []
       },
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 14,
-      "title": "Memory by pod",
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 8,
-        "y": 27
-      },
-      "datasource": {
-        "type": "stackdriver",
-        "uid": "li-gcp"
-      },
       "targets": [
         {
+          "refId": "A",
           "queryType": "timeSeriesList",
           "datasource": {
             "type": "stackdriver",
@@ -633,7 +584,7 @@
             "filters": [
               "metric.type",
               "=",
-              "kubernetes.io/container/memory/used_bytes",
+              "kubernetes.io/container/uptime",
               "AND",
               "resource.label.namespace_name",
               "=",
@@ -643,62 +594,58 @@
               "=",
               "app",
               "AND",
-              "metric.label.memory_type",
-              "=",
-              "non-evictable"
+              "resource.label.pod_name",
+              "=~",
+              "ingest-.*"
             ],
             "perSeriesAligner": "ALIGN_MEAN",
-            "crossSeriesReducer": "REDUCE_SUM",
-            "groupBys": [
-              "resource.label.pod_name"
-            ],
-            "alignmentPeriod": "cloud-monitoring-auto",
+            "crossSeriesReducer": "REDUCE_COUNT",
+            "groupBys": [],
+            "alignmentPeriod": "60s",
             "view": "FULL",
             "preprocessor": "none"
-          },
-          "aliasBy": "{{resource.label.pod_name}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "spanNulls": false,
-            "showPoints": "never"
           }
-        },
-        "overrides": []
-      },
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi"
         }
-      }
+      ]
     },
     {
-      "id": 15,
-      "title": "Container restarts",
+      "id": 14,
+      "title": "Search pods",
+      "description": "Counted from the last 15 minutes, so a paused environment shows 0.",
+      "type": "stat",
+      "timeFrom": "15m",
       "gridPos": {
         "h": 7,
-        "w": 8,
-        "x": 16,
+        "w": 12,
+        "x": 12,
         "y": 27
       },
       "datasource": {
         "type": "stackdriver",
         "uid": "li-gcp"
       },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "0"
+        },
+        "overrides": []
+      },
       "targets": [
         {
+          "refId": "A",
           "queryType": "timeSeriesList",
           "datasource": {
             "type": "stackdriver",
@@ -709,7 +656,7 @@
             "filters": [
               "metric.type",
               "=",
-              "kubernetes.io/container/restart_count",
+              "kubernetes.io/container/uptime",
               "AND",
               "resource.label.namespace_name",
               "=",
@@ -717,44 +664,21 @@
               "AND",
               "resource.label.container_name",
               "=",
-              "app"
+              "app",
+              "AND",
+              "resource.label.pod_name",
+              "=~",
+              "search-.*"
             ],
-            "perSeriesAligner": "ALIGN_DELTA",
-            "crossSeriesReducer": "REDUCE_SUM",
-            "groupBys": [
-              "resource.label.pod_name"
-            ],
-            "alignmentPeriod": "3600s",
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_COUNT",
+            "groupBys": [],
+            "alignmentPeriod": "60s",
             "view": "FULL",
             "preprocessor": "none"
-          },
-          "aliasBy": "{{resource.label.pod_name}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "spanNulls": false,
-            "showPoints": "never"
           }
-        },
-        "overrides": []
-      },
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi"
         }
-      }
+      ]
     },
     {
       "id": 16,
