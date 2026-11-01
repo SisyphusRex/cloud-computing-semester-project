@@ -1,6 +1,6 @@
 # Environment and dashboard links
 
-The values of our deployed environment, and where to look at the running system in the web consoles. None of these values are secrets. Google Cloud links open the project `lecture-indexer-511419` directly; sign in with an account that has access to it. The monitoring dashboard and remaining alerts from step 5 of the [implementation plan](../implementation-plan.md) don't exist yet; they'll be added here.
+The values of our deployed environment, and where to look at the running system in the web consoles. None of these values are secrets. Google Cloud links open the project `lecture-indexer-511419` directly; sign in with an account that has access to it. The remaining alerts from step 5 of the [implementation plan](../implementation-plan.md) don't exist yet; they'll be added here.
 
 ## The app
 
@@ -25,6 +25,17 @@ The values of our deployed environment, and where to look at the running system 
 | Backup upload credential | Secret Manager `backup-sas`; expires 2027-10-31 |
 | Backup encryption public key | `age1zuvsq4vtwc49dwkdt8uknl3kh2z2rt52p8r3kmfag4n9a0kwz4sqes3nz2` |
 | Backup alert | Cloud Monitoring policy "Database backup failed", by email |
+| Grafana identities | Google: `li-grafana@lecture-indexer-511419.iam.gserviceaccount.com`. Azure: app `li-grafana`, client ID `4c811b16-fcda-46f0-89e9-0b99f08e6beb` |
+| Grafana credential expiry | Azure secret: 2027-11-01. The Google key never expires |
+
+## Grafana Cloud
+
+| What | Link | Look for |
+|---|---|---|
+| Dashboard | https://silverlinden1722.grafana.net/d/lecture-indexer | Google Cloud services and Azure backup storage, on one page |
+| Data sources | https://silverlinden1722.grafana.net/connections/datasources | `Google Cloud Monitoring` (`li-gcp`) and `Azure Monitor` (`li-azure`). The `grafanacloud-*` ones come with every stack, and we don't use them |
+
+How to set it up and look after it: the [monitoring runbook](../runbooks/monitoring.md).
 
 ## Google Cloud
 
@@ -72,6 +83,8 @@ Some resources can't carry labels:
 | VPC `li`, subnet `li-gke` | The private network for GKE and Cloud SQL |
 | Router `li-router`, NAT `li-nat` | Outbound internet for the private nodes, e.g. to Azure Blob |
 | Service accounts `li-ingest`, `li-search`, `li-migrate`, `li-backup` | One identity per workload |
+| Service account and Azure app `li-grafana` | Read-only access for Grafana Cloud |
+| Log-based metrics `app_errors`, `backup_*`, `ingest_*` | What the dashboard charts from the logs |
 | Service accounts `li-nodes`, `li-frontend` | GKE nodes, and the Cloud Run frontend |
 | Service accounts `github-terraform`, `github-deploy`, `github-plan` | GitHub Actions: apply, deploy, read-only plan |
 | Workload Identity pool `github` | Lets GitHub Actions sign in to Google Cloud without keys |

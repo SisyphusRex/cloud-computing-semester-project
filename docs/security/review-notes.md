@@ -17,6 +17,9 @@ Everything earlier work set aside for the [M3 security review](../milestones/m3_
 - **Backups log in as `li_admin`** ([ADR 0004](../architecture_decision_records/0004-database-backups-to-azure.md)), the same as migrations. The CronJob's Google service account can read that password. A read-only backup user is worth considering.
 - **Immutability's limit** ([ADR 0004](../architecture_decision_records/0004-database-backups-to-azure.md)). A subscription owner can remove the unlocked policy, so it protects against a stolen SAS or a mistake, not against a compromised Azure owner account.
 
+- **Grafana Cloud's credentials** ([ADR 0005](../architecture_decision_records/0005-monitoring-on-grafana-cloud.md)). A Google service account key and an Azure client secret are held by Grafana Labs: our first long-lived credentials outside our own clouds. The key is limited to `roles/monitoring.viewer`, and never expires. The secret is limited to `Monitoring Reader` on `rg-li-backup`, and expires 2027-11-01. Neither can change anything, or read the database, secrets or backups. They're kept out of Terraform state, and the [monitoring runbook](../runbooks/monitoring.md#revoke-a-leaked-credential) covers rotating and revoking them.
+- **Grafana admin token.** A Grafana service account token with the Admin role can read and replace data sources. It's kept encrypted on one machine, and never goes into GitHub.
+
 ## Browser security
 
 - **CSP** ([ADR 0001](../architecture_decision_records/0001-frontend-on-cloud-run.md)). It's now set by nginx, and its `connect-src` names the API origin at build time.

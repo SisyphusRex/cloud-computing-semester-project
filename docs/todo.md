@@ -13,6 +13,19 @@ From the [record of the setup](milestones/m3_technical_review/azure-backup-setup
 5. Put the SAS expiry, **2027-10-31**, in a calendar. `make cloud-backup-sas` renews it.
 6. [Add teammates to the failure alert](runbooks/backup-and-restore.md#add-teammates-to-the-failure-alert), so a failed backup doesn't depend on one person's inbox.
 
+## Finish the Grafana setup
+
+From the [Grafana Cloud plan](monitoring/grafana-cloud-plan.md#how-well-know-it-works):
+
+1. Have the team confirm [the decisions the plan asked for](monitoring/grafana-cloud-plan.md#before-we-start), especially using Grafana Labs as a third party and who owns the account.
+2. Check the free tier's user limit before inviting teammates. Sources disagreed, and it may be as low as 3.
+3. Check that `BlobCount` on the dashboard went up after the 2026-11-01 21:25 UTC backup.
+4. Run the forced failure in the [backup runbook](runbooks/backup-and-restore.md#check-the-protections), confirm `backup_failed` rises on the dashboard, and put the CronJob back. It emails the alert channel.
+5. Confirm the charts resume after `make cloud-pause` and `make cloud-resume`, with no change in Grafana.
+6. Run `make cloud-grafana-credentials` again, and confirm that the old credentials stop working and both data sources still pass.
+7. Put the Azure secret's expiry, **2027-11-01**, in a calendar. The same command renews it and replaces the Google key, which never expires.
+8. Ask WMU IT to delete the ownerless Azure app `li-grafana`, client ID `43d8235c-798b-40c7-832c-89ac9abb73bb` ([why it exists](architecture_decision_records/0005-monitoring-on-grafana-cloud.md#consequences)). It has no owner, credentials or roles, so it's harmless.
+
 ## Delete the older on-demand database backups
 
 Each [first-release attempt](milestones/m2_prototype_review/first-deployment.md#results-2026-10-18) that reached the migrations took a backup, so `li-pg` has three on-demand backups from 2026-10-18 (cents per month; the older two can go).

@@ -120,7 +120,7 @@ To rotate the `li_admin` password, increment the default of `db_admin_password_v
 
 To query the database by hand (it has only a private IP), see [Accessing the production database](../security/database-access.md).
 
-**Terraform state holds no secrets.** The database password is write-only, and no deploy tokens exist: CI deploys with short-lived Workload Identity credentials.
+**Terraform state holds no secrets.** The database password is write-only, and no deploy tokens exist: CI deploys with short-lived Workload Identity credentials. Grafana's credentials are made by a script to stay out of state ([monitoring runbook](monitoring.md)).
 
 ## 7. Control cost
 

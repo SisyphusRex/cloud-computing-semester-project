@@ -1,5 +1,5 @@
 # One Google service account per workload, used from its Kubernetes service
-# account through Workload Identity. No keys exist anywhere.
+# account through Workload Identity. No workload has a key.
 
 locals {
   workloads = {

@@ -16,6 +16,7 @@ New here? Start with **[onboarding](docs/onboarding.md)**. The [documentation ma
 | Database | Cloud SQL for PostgreSQL, full-text search | Google Cloud |
 | Backups | Nightly encrypted `pg_dump` to Blob Storage | Azure |
 | Secrets / registry / monitoring | Secret Manager, Artifact Registry, Cloud Monitoring | Google Cloud |
+| Dashboard | Grafana Cloud, reading Cloud Monitoring and Azure Monitor | Grafana Cloud |
 | CI/CD / IaC | GitHub Actions (keyless OIDC), Terraform | both |
 
 The system as deployed, with its decisions: [architecture](docs/architecture.md). Original rationale: [the proposal](docs/milestones/m1_project_proposal/). The proposal put the front end on Azure Static Web Apps; our Azure subscription can't deploy it, so it moved to Cloud Run ([ADR 0001](docs/architecture_decision_records/0001-frontend-on-cloud-run.md)).

@@ -10,7 +10,8 @@ Per the proposal:
 - **App tier**: two Flask services on GKE behind Cloud Load Balancing, **Ingest API** and **Search API**, each with its own HPA.
 - **Data**: Cloud SQL for PostgreSQL (private IP), full-text search over timestamped caption segments.
 - **Backups**: nightly K8s CronJob, and one before each pause → encrypted `pg_dump` → Azure Blob Storage (immutable, cool tier), create-only credential in Secret Manager ([ADR 0004](architecture_decision_records/0004-database-backups-to-azure.md)).
-- **Platform**: Artifact Registry, Secret Manager + Workload Identity, Cloud Monitoring (the backup alert so far; the dashboard and other alerts are step 5).
+- **Platform**: Artifact Registry, Secret Manager + Workload Identity, Cloud Monitoring (log-based metrics and the backup alert; the other alerts are step 5).
+- **Monitoring**: one [Grafana Cloud](monitoring/dashboard-links.md#grafana-cloud) dashboard over Cloud Monitoring and Azure Monitor, with read-only credentials held outside our clouds ([ADR 0005](architecture_decision_records/0005-monitoring-on-grafana-cloud.md)).
 - **Delivery**: GitHub Actions with keyless OIDC to both clouds; Terraform for both providers.
 
 ## Decisions
@@ -30,7 +31,7 @@ Per the proposal:
 | **Database privileges via group roles**: `li_ingest_role` (read/write), `li_search_role` (read, plus claiming invitations at sign-in; its leftover `INSERT` on `users` is in the [to-do list](todo.md)) | Cloud SQL IAM users start with no privileges. Migration `0002` creates the roles; the migrate Job logs in as the built-in `li_admin` user (password in Secret Manager) and runs `li-migrate --grant` (`LI_MIGRATE_GRANTS`) to add each IAM user to its role. |
 | **One deployed environment, named `prod`** (`envs/prod`, `overlays/prod`, GitHub environment `prod`, `rg-li-prod`) | It's the only environment and the one demoed, so it is production. The `modules/` + `envs/<name>/` layout is kept, so a throwaway second environment would just be another folder. |
 | **One Terraform state bucket** in GCS for both clouds; `bootstrap/` and `envs/prod` are separate roots | Bootstrap (CI identities) is applied once by a human; `envs/prod` can be destroyed and recreated freely. The bucket itself is created with `gcloud` because Terraform needs it first. |
-| **Keyless CI**: GCP Workload Identity pool restricted to this repo; Azure user-assigned managed identities with federated credentials | No service account keys or client secrets anywhere. |
+| **Keyless CI**: GCP Workload Identity pool restricted to this repo; Azure user-assigned managed identities with federated credentials | No service account keys or client secrets in CI. The only ones in the project are Grafana Cloud's read-only credentials, because it runs outside our clouds ([ADR 0005](architecture_decision_records/0005-monitoring-on-grafana-cloud.md)). |
 | **Powerful CI identities only in the `prod` GitHub environment** (`github-terraform`, `github-deploy`, `id-li-github`); **read-only identities for PRs and the release's plan job** (`github-plan`, `id-li-github-plan`) | Bindings match the token's exact subject (`repo:…:environment:prod` vs `repo:…:pull_request` or `repo:…:environment:prod-plan`), so a workflow on a PR can't get write access. The `prod` environment requires an approval (self-approval allowed; repository admins may bypass it, a team decision of 2026-10-18) and only allows `main`. |
 | **Pull requests into `main` are not enforced, and deploy self-approval is allowed** (for now) | Team choice. One person can push to `main` and approve their own deploy, so the `prod` approval is a deliberate confirmation step: check what changed on `main` (especially `.github/workflows/` and `infra/`) before approving. Tighten later with **Prevent self-review** or a PR ruleset on `main`; neither needs other changes. Deploys wait for CI to pass on the same commit before asking for approval. |
 | **PR plans run `terraform plan -refresh=false -lock=false`** | The plan identities are read-only (GCP Viewer, Azure Reader). PR plans show what the code change does; the full refresh happens in the plan before each apply. Originally required because Reader couldn't refresh the Static Web App; kept after the move to Cloud Run. |
@@ -67,7 +68,8 @@ Per the proposal:
 ```
 infra/terraform/
 ├── .terraform-version        # 1.16.4 (tfenv)
-├── bootstrap/                # once, by hand: GitHub OIDC for GCP + Azure, CI service accounts
+├── bootstrap/                # once, by hand: GitHub OIDC for GCP + Azure, CI service accounts, Grafana's identities
+├── grafana/                  # by hand: the dashboard, and no credentials
 ├── modules/
 │   ├── gcp-network/          # VPC, pod/service ranges, private services access, Cloud NAT
 │   ├── gke/                  # Autopilot, private nodes, least-privilege node SA, Secret Manager add-on
@@ -75,7 +77,7 @@ infra/terraform/
 │   ├── artifact-registry/    # Docker repo with cleanup policies
 │   ├── secrets/              # Secret Manager secrets with per-secret accessors
 │   ├── cloud-run-frontend/   # nginx SPA on Cloud Run, public, deployers scoped to the service
-│   ├── monitoring/           # the backup alert; the rest is step 5
+│   ├── monitoring/           # the backup alert and log-based metrics; the other alerts are step 5
 │   └── azure-backup-storage/ # used from bootstrap/, so backups survive destroying envs/prod
 └── envs/prod/                # wires the modules; identities.tf (Workload Identity); tests/ (mocked)
 ```

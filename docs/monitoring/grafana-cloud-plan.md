@@ -1,6 +1,6 @@
 # Plan: Grafana Cloud monitoring
 
-**Status:** proposed, for team review. Nothing here has been built yet.
+**Status:** built and released 2026-11-01 in `prod-2026-11-01.1`, except for the checks in the [to-do list](../todo.md#finish-the-grafana-setup). This is the plan as agreed, so the [monitoring runbook](../runbooks/monitoring.md) and [ADR 0005](../architecture_decision_records/0005-monitoring-on-grafana-cloud.md) are the current references. The main change in the build: the dashboard JSON was generated and its queries tested against the real APIs, not built in Grafana's editor.
 
 This plan adds one Grafana Cloud dashboard showing our Google Cloud services and our Azure backup storage. It covers the monitoring deliverable for M3 and the dashboard part of step 5 in the [implementation plan](../implementation-plan.md).
 

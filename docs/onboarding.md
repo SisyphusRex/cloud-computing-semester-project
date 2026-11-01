@@ -68,7 +68,7 @@ make cloud-status
 - **Locally:** [troubleshooting](local-development.md#troubleshooting).
 - **In CI:** the failed job's log in the [Actions tab](https://github.com/SisyphusRex/cloud-computing-semester-project/actions).
 - **In a release:** [When something goes wrong](release-process.md#when-something-goes-wrong), and past failures in [first-deployment.md](milestones/m2_prototype_review/first-deployment.md#results-2026-10-18) and [azure-backup-setup.md](milestones/m3_technical_review/azure-backup-setup.md#problems-we-hit).
-- **In production:** logs and consoles in [Environment and dashboard links](monitoring/dashboard-links.md).
+- **In production:** the [Grafana dashboard](monitoring/dashboard-links.md#grafana-cloud) first, then logs and consoles in [Environment and dashboard links](monitoring/dashboard-links.md).
 - **A backup alert:** [When the alert fires](runbooks/backup-and-restore.md#when-the-alert-fires).
 
 ## A first task

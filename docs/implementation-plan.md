@@ -12,7 +12,7 @@ Last updated: 2026-10-31.
 | 2 | `db/migrations`, `services/` (li_common, ingest, search), Dockerfiles, docker-compose, Makefile | ✅ done (`73ed7d8`): 67 tests pass against Postgres 16 |
 | 3 | Terraform: `infra/terraform/bootstrap`, then `envs/prod` | ✅ written and validated (mocked `terraform test` passes). Bootstrap applied 2026-10-18 (Azure in `northcentralus` after the region policy refused `eastus2`); GitHub variables and the `prod` environment set. `envs/prod` applied 2026-10-18. See [runbook](runbooks/bootstrap.md) |
 | 4 | `deploy/k8s` (Kustomize), GitHub workflows, `frontend/` | ✅ done: first release `prod-2026-10-18.1` on 2026-10-18; end-to-end test passed in production ([first-deployment.md](milestones/m2_prototype_review/first-deployment.md)) |
-| 5 | Backup CronJob + Azure storage, monitoring module, security review doc | partly done: backups and their failure alert ([ADR 0004](architecture_decision_records/0004-database-backups-to-azure.md)), released 2026-10-31 in `prod-2026-10-31.3`, with the restore test passed ([record](milestones/m3_technical_review/azure-backup-setup.md)); the rest of monitoring and the security review doc are still to do |
+| 5 | Backup CronJob + Azure storage, monitoring module, security review doc | partly done: backups and their failure alert ([ADR 0004](architecture_decision_records/0004-database-backups-to-azure.md)), released 2026-10-31 in `prod-2026-10-31.3`, with the restore test passed ([record](milestones/m3_technical_review/azure-backup-setup.md)); the Grafana Cloud dashboard and log-based metrics ([ADR 0005](architecture_decision_records/0005-monitoring-on-grafana-cloud.md)), released 2026-11-01 in `prod-2026-11-01.1`; the remaining alerts and the security review doc are still to do |
 
 | Milestone | Due | Needs |
 |---|---|---|
@@ -22,7 +22,7 @@ Last updated: 2026-10-31.
 
 ## Remaining: step 5
 
-- `modules/monitoring`: dashboard, log-based metrics, and the remaining alert policies (the backup alert is done).
+- `modules/monitoring`: the remaining alert policies. The backup alert and log-based metrics are done, and the dashboard is on [Grafana Cloud](monitoring/dashboard-links.md#grafana-cloud).
 - The security review in `docs/milestones/m3_technical_review/`, including the YouTube scope correction. Its inputs are collected in [security/review-notes.md](security/review-notes.md).
 
 Smaller open work is in the [to-do list](todo.md).
