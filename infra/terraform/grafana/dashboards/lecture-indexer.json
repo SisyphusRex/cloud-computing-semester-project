@@ -753,7 +753,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 8,
@@ -818,7 +819,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 9,
@@ -895,7 +897,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 11,
@@ -956,7 +959,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 12,
@@ -1205,7 +1209,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 18,
@@ -1266,7 +1271,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 19,
@@ -1327,7 +1333,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 20,
@@ -1392,7 +1399,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 21,
@@ -1437,7 +1445,7 @@
             "perSeriesAligner": "ALIGN_SUM",
             "crossSeriesReducer": "REDUCE_SUM",
             "groupBys": [],
-            "alignmentPeriod": "3600s",
+            "alignmentPeriod": "60s",
             "view": "FULL",
             "preprocessor": "none"
           },
@@ -1466,7 +1474,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 23,
@@ -1498,7 +1507,7 @@
             "perSeriesAligner": "ALIGN_SUM",
             "crossSeriesReducer": "REDUCE_SUM",
             "groupBys": [],
-            "alignmentPeriod": "3600s",
+            "alignmentPeriod": "60s",
             "view": "FULL",
             "preprocessor": "none"
           },
@@ -1527,7 +1536,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 33,
@@ -1572,7 +1582,7 @@
             "perSeriesAligner": "ALIGN_SUM",
             "crossSeriesReducer": "REDUCE_SUM",
             "groupBys": [],
-            "alignmentPeriod": "3600s",
+            "alignmentPeriod": "60s",
             "view": "FULL",
             "preprocessor": "none"
           },
@@ -1601,7 +1611,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 35,
@@ -1633,7 +1644,7 @@
             "perSeriesAligner": "ALIGN_SUM",
             "crossSeriesReducer": "REDUCE_SUM",
             "groupBys": [],
-            "alignmentPeriod": "3600s",
+            "alignmentPeriod": "60s",
             "view": "FULL",
             "preprocessor": "none"
           },
@@ -1662,7 +1673,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "timeFrom": "10m"
     },
     {
       "id": 24,
@@ -1878,7 +1890,7 @@
       "title": "Backups stored",
       "gridPos": {
         "h": 7,
-        "w": 6,
+        "w": 12,
         "x": 0,
         "y": 64
       },
@@ -1944,8 +1956,8 @@
       "title": "Storage used",
       "gridPos": {
         "h": 7,
-        "w": 6,
-        "x": 6,
+        "w": 12,
+        "x": 12,
         "y": 64
       },
       "datasource": {
@@ -1990,148 +2002,6 @@
             "spanNulls": false,
             "showPoints": "never"
           }
-        },
-        "overrides": []
-      },
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 31,
-      "title": "Transactions by result",
-      "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 12,
-        "y": 64
-      },
-      "datasource": {
-        "type": "grafana-azure-monitor-datasource",
-        "uid": "li-azure"
-      },
-      "targets": [
-        {
-          "queryType": "Azure Monitor",
-          "datasource": {
-            "type": "grafana-azure-monitor-datasource",
-            "uid": "li-azure"
-          },
-          "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
-          "azureMonitor": {
-            "metricName": "Transactions",
-            "metricNamespace": "microsoft.storage/storageaccounts/blobservices",
-            "aggregation": "Total",
-            "timeGrain": "PT1H",
-            "region": "northcentralus",
-            "allowedTimeGrainsMs": [],
-            "dimensionFilters": [
-              {
-                "dimension": "ResponseType",
-                "operator": "eq",
-                "filters": []
-              }
-            ],
-            "resources": [
-              {
-                "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
-                "resourceGroup": "rg-li-backup",
-                "resourceName": "libackupecd087147d/default",
-                "metricNamespace": "Microsoft.Storage/storageAccounts/blobServices",
-                "region": "northcentralus"
-              }
-            ],
-            "alias": "{{ dimensionvalue }}"
-          },
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "spanNulls": false,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      }
-    },
-    {
-      "id": 32,
-      "title": "Availability",
-      "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 18,
-        "y": 64
-      },
-      "datasource": {
-        "type": "grafana-azure-monitor-datasource",
-        "uid": "li-azure"
-      },
-      "targets": [
-        {
-          "queryType": "Azure Monitor",
-          "datasource": {
-            "type": "grafana-azure-monitor-datasource",
-            "uid": "li-azure"
-          },
-          "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
-          "azureMonitor": {
-            "metricName": "Availability",
-            "metricNamespace": "microsoft.storage/storageaccounts/blobservices",
-            "aggregation": "Average",
-            "timeGrain": "PT1H",
-            "region": "northcentralus",
-            "allowedTimeGrainsMs": [],
-            "dimensionFilters": [],
-            "resources": [
-              {
-                "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
-                "resourceGroup": "rg-li-backup",
-                "resourceName": "libackupecd087147d/default",
-                "metricNamespace": "Microsoft.Storage/storageAccounts/blobServices",
-                "region": "northcentralus"
-              }
-            ]
-          },
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "custom": {
-            "drawStyle": "points",
-            "fillOpacity": 10,
-            "spanNulls": false,
-            "showPoints": "always",
-            "pointSize": 6
-          },
-          "min": 0,
-          "max": 100
         },
         "overrides": []
       },

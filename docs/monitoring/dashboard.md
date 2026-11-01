@@ -20,7 +20,7 @@ Grafana stores no metrics of its own. Each time a panel refreshes, it queries on
 | Google Cloud Monitoring | `li-gcp` | Everything except the Azure row |
 | Azure Monitor | `li-azure` | The Azure row |
 
-The dashboard refreshes every 5 minutes and shows the last 7 days by default. Panels that set their own time range ignore that setting, and it's noted below.
+The dashboard refreshes every 5 minutes, and its default range is the last 7 days. Most panels set their own shorter range and ignore that setting, as noted below. Only the Backups and Azure rows use it.
 
 Numbers come from three kinds of source:
 
@@ -76,7 +76,7 @@ These tiles have limits:
 
 ### Frontend (Cloud Run)
 
-Both panels filter on `service_name = li-frontend`, and include the uptime checks' requests.
+Both panels show the last 10 minutes, filter on `service_name = li-frontend`, and include the uptime checks' requests.
 
 | Panel | Metric | Aligner, reducer | Grouped by |
 |---|---|---|---|
@@ -85,7 +85,7 @@ Both panels filter on `service_name = li-frontend`, and include the uptime check
 
 ### API (load balancer)
 
-Both panels cover the whole load balancer, so they include the uptime checks' requests, and anything that never reached a pod. A 502 from the load balancer appears here even though the app didn't log it.
+Both panels show the last 10 minutes. They cover the whole load balancer, so they include the uptime checks' requests, and anything that never reached a pod. A 502 from the load balancer appears here even though the app didn't log it.
 
 | Panel | Metric | Aligner, reducer | Grouped by |
 |---|---|---|---|
@@ -109,6 +109,8 @@ GKE metrics arrive a few minutes late, so the line can stop short of the right e
 
 ### Cloud SQL
 
+All four panels show the last 10 minutes.
+
 | Panel | Metric, under `cloudsql.googleapis.com/database/` | Filter | Aligner, reducer |
 |---|---|---|---|
 | CPU | `cpu/utilization` | None | `ALIGN_MEAN`, `REDUCE_MEAN` |
@@ -118,7 +120,7 @@ GKE metrics arrive a few minutes late, so the line can stop short of the right e
 
 ### Ingestion, Search and Backups
 
-All of these are hourly bars from log-based metrics, using `ALIGN_SUM` and `REDUCE_SUM`, except Backup size.
+These are bars from log-based metrics, using `ALIGN_SUM` and `REDUCE_SUM`, except Backup size. The Ingestion and Search rows show one bar per minute over the last 10 minutes, so they're usually empty unless someone just used the app. The Backups row shows one bar per hour over the dashboard's range.
 
 | Row | Panel | Metric | Log filter |
 |---|---|---|---|
@@ -146,16 +148,14 @@ That route is the one that searches transcripts. Listing courses and browser `OP
 
 ### Azure backup storage
 
-All four panels read the Blob service of storage account `libackupecd087147d`, in `rg-li-backup`, one point per hour.
+Both panels read the Blob service of storage account `libackupecd087147d`, in `rg-li-backup`, one point per hour.
 
-| Panel | Azure metric | Aggregation | Split by |
-|---|---|---|---|
-| Backups stored | `BlobCount` | Average | None |
-| Storage used | `BlobCapacity` | Average | None |
-| Transactions by result | `Transactions` | Total | `ResponseType` |
-| Availability | `Availability` | Average | None |
+| Panel | Azure metric | Aggregation |
+|---|---|---|
+| Backups stored | `BlobCount` | Average |
+| Storage used | `BlobCapacity` | Average |
 
-`BlobCount` and `BlobCapacity` have hourly points, but Azure only refreshes them a few times a day, so they can lag a backup by several hours. We measured delays from about 1.5 hours to at least 4 hours. To see what's really there, run `make cloud-restore ARGS="list"`. Azure only reports Availability for hours with traffic, so that panel draws dots.
+`BlobCount` and `BlobCapacity` have hourly points, but Azure only refreshes them a few times a day, so they can lag a backup by several hours. We measured delays from about 1.5 hours to at least 4 hours. To see what's really there, run `make cloud-restore ARGS="list"`.
 
 These panels show that storage changed, not that a backup can be restored. The [restore test](../runbooks/backup-and-restore.md#test-a-restore) proves that.
 
