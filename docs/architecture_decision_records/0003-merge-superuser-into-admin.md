@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-31
 - **Changes:** the admin and superuser tiers in [ADR 0002](0002-invite-only-users-and-admin-roles.md). Invite-only sign-in, the `users.role` column and the audit trail stay as they are.
+- **Update (2026-11-01):** migration `0006_contract_user_roles.sql` drops `users.is_superuser`, the second step of the rollout below.
 
 ## Context
 

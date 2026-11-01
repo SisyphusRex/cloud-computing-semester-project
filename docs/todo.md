@@ -25,20 +25,6 @@ From the [Grafana Cloud plan](monitoring/grafana-cloud-plan.md#how-well-know-it-
 7. Put the Azure secret's expiry, **2027-11-01**, in a calendar. The same command renews it and replaces the Google key, which never expires.
 8. Ask WMU IT to delete the ownerless Azure app `li-grafana`, client ID `43d8235c-798b-40c7-832c-89ac9abb73bb` ([why it exists](architecture_decision_records/0005-monitoring-on-grafana-cloud.md#consequences)). It has no owner, credentials or roles, so it's harmless.
 
-## Finish the user-roles change (contract step)
-
-[ADR 0002](architecture_decision_records/0002-invite-only-users-and-admin-roles.md) moved roles into the database. The release that shipped it kept two things for one release, so that the previous version still works during a rollback. **Ready to do:** it went out in `prod-2026-10-19.1`, and later releases followed:
-- **The empty `PROFESSOR_EMAILS` key** in `deploy/k8s/overlays/prod/values/values.env`. The previous pods read it from `li-config`, and `kubectl rollout undo` would fail if it were missing. Delete it.
-- **Search's `INSERT` on `users`** (`0002_app_roles.sql`). Sign-in now only claims invitations (an `UPDATE`), so a new migration can `REVOKE INSERT ON users FROM li_search_role`.
-
-Do both once it's clear no rollback to that release is needed.
-
-## Drop `users.is_superuser` (contract step)
-
-[ADR 0003](architecture_decision_records/0003-merge-superuser-into-admin.md) merged superuser into admin. The code no longer uses the column, but the release before it still selects it, so it stayed for one release. **Ready to do:** it went out in `prod-2026-10-31.1`, and three releases followed. Once it's clear no rollback is needed:
-- Add a migration: `ALTER TABLE users DROP COLUMN is_superuser`.
-- Remove `test_admin_revokes_admin_from_a_former_superuser` from `services/ingest/tests/test_admin_routes.py`; it sets the column directly.
-
 ## Test the onboarding guide
 
 Have someone who hasn't worked on the project follow [onboarding.md](onboarding.md), and fix what trips them up.

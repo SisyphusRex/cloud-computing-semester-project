@@ -10,6 +10,7 @@ Everything earlier work set aside for the [M3 security review](../milestones/m3_
 - **YouTube scope.** The proposal says the professor's YouTube token is requested with a read-only scope, but `captions.list` and `captions.download` only accept `youtube.force-ssl`. The token is used for one request and never stored or logged. Correct this in the M3 security review.
 - **Consent screen wording** (from the [real test's follow-ups](../milestones/m2_prototype_review/real-youtube-test.md#8-results-2026-10-18)). It tells professors the app can "see, edit, and permanently delete" their YouTube videos; explain that only GET calls are made and the token is never stored.
 - **Sign-in persistence, if it's ever done** ([wishlist](../wishlist.md#keep-the-sign-in-across-page-refreshes)). Keeping the session in `sessionStorage` exposes the ID token to injected scripts until it expires; note the trade-off.
+- **Leftover privileges removed** (migration `0006_contract_user_roles.sql`). Search kept `INSERT` on `users` and use of its sequence for a release after [ADR 0002](../architecture_decision_records/0002-invite-only-users-and-admin-roles.md), so a rollback would still work. Both are revoked, leaving it `SELECT` plus `UPDATE` on `users`.
 
 ## Secrets management
 

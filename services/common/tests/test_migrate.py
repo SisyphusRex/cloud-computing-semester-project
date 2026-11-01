@@ -69,7 +69,12 @@ def test_grants_give_least_privilege(database_url, login_roles):
     )
     with psycopg.connect(database_url) as conn:
         _as(conn, login_roles["search"], "SELECT count(*) FROM segments")
-        _as(conn, login_roles["search"], "INSERT INTO users (google_sub, email) VALUES ('s', 's')")
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            _as(
+                conn,
+                login_roles["search"],
+                "INSERT INTO users (google_sub, email) VALUES ('s', 's')",
+            )
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             _as(
                 conn,
@@ -77,4 +82,6 @@ def test_grants_give_least_privilege(database_url, login_roles):
                 "INSERT INTO courses (owner_id, code, title) VALUES (1, 'x', 'x')",
             )
         _as(conn, login_roles["ingest"], "INSERT INTO users (google_sub, email) VALUES ('i', 'i')")
+        # Sign-in claims an invitation.
+        _as(conn, login_roles["search"], "UPDATE users SET name = 'x' WHERE email = 'i'")
         _as(conn, login_roles["ingest"], "DELETE FROM segments")

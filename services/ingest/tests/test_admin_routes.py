@@ -146,17 +146,6 @@ def test_admins_cannot_disable_or_demote_themselves(client, auth, changes):
     assert client.get("/ingest/me", headers=auth(ADMIN)).json["role"] == "student"
 
 
-def test_admin_revokes_admin_from_a_former_superuser(client, auth, database_url):
-    other = _id(client, auth, OTHER_ADMIN)
-    with psycopg.connect(database_url) as conn:
-        conn.execute("UPDATE users SET is_superuser = true WHERE id = %s", (other,))
-    resp = client.patch(
-        f"/ingest/admin/users/{other}", json={"is_admin": False}, headers=auth(ADMIN)
-    )
-    assert resp.status_code == 200, resp.json
-    assert client.get("/ingest/admin/users", headers=auth(OTHER_ADMIN)).status_code == 403
-
-
 def test_admin_cancels_an_admins_invitation(client, auth, invite):
     invite("new-admin@example.edu", admin=True)
     target = _id(client, auth, "new-admin@example.edu")

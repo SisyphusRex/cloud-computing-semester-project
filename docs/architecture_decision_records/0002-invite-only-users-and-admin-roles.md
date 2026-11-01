@@ -4,6 +4,7 @@
 - **Date:** 2026-10-19
 - **Changes:** how users get the professor role in the Milestone 2 implementation (the `PROFESSOR_EMAILS` allowlist)
 - **Update (2026-10-31):** `li-admin create-superuser` and `make cloud-create-superuser`, named below, are gone. Use `li-admin create-admin` and `make cloud-create-admin` ([ADR 0003](0003-merge-superuser-into-admin.md)).
+- **Update (2026-11-01):** the contract step is written: the `PROFESSOR_EMAILS` key is gone from `values.env`, and migration `0006_contract_user_roles.sql` removes search's `INSERT` on `users`, and its use of the sequence.
 
 ## Context
 
