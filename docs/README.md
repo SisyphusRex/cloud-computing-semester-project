@@ -17,6 +17,7 @@ Where to find things, and where new things belong. New to the project? Start wit
 | Back up or restore the database | [Backup runbook](runbooks/backup-and-restore.md) |
 | Test against real Google and YouTube | [Real Google test](runbooks/real-google-test.md) |
 | Find a console, a resource or an environment value | [Environment and dashboard links](monitoring/dashboard-links.md) |
+| Review the proposed monitoring dashboard | [Grafana Cloud plan](monitoring/grafana-cloud-plan.md) |
 | Query the production database | [Database access](security/database-access.md) |
 | Prepare the security review | [Security review notes](security/review-notes.md) |
 | See what was submitted or what happened on a date | [Milestones](milestones/) and [AI usage logs](ai_usage/) |
