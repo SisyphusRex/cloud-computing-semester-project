@@ -44,10 +44,14 @@
     },
     {
       "id": 3,
-      "title": "Database up",
+      "title": "Database",
+      "description": "Cloud SQL reports the instance as up.",
+      "type": "stat",
+      "timeFrom": "15m",
+      "hideTimeOverride": true,
       "gridPos": {
-        "h": 7,
-        "w": 8,
+        "h": 4,
+        "w": 4,
         "x": 0,
         "y": 3
       },
@@ -57,6 +61,7 @@
       },
       "targets": [
         {
+          "refId": "A",
           "queryType": "timeSeriesList",
           "datasource": {
             "type": "stackdriver",
@@ -72,35 +77,12 @@
             "perSeriesAligner": "ALIGN_MEAN",
             "crossSeriesReducer": "REDUCE_MIN",
             "groupBys": [],
-            "alignmentPeriod": "cloud-monitoring-auto",
+            "alignmentPeriod": "300s",
             "view": "FULL",
             "preprocessor": "none"
-          },
-          "refId": "A"
+          }
         }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Down",
-                  "color": "red"
-                },
-                "1": {
-                  "text": "Up",
-                  "color": "green"
-                }
-              }
-            }
-          ]
-        },
-        "overrides": []
-      },
-      "type": "stat",
       "options": {
         "reduceOptions": {
           "calcs": [
@@ -109,16 +91,167 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none"
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "Down",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.5
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1000000,
+                "result": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": -1,
+                "to": 0.499,
+                "result": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
       }
     },
     {
       "id": 4,
-      "title": "App errors",
+      "title": "Backups",
+      "description": "At least one backup succeeded in the last 26 hours.",
+      "type": "stat",
+      "timeFrom": "26h",
+      "hideTimeOverride": true,
       "gridPos": {
-        "h": 7,
-        "w": 8,
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 3
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/backup_succeeded"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "Down",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 1,
+                "to": 1000000,
+                "result": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": -1,
+                "to": 0.999,
+                "result": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "Frontend",
+      "description": "The uptime check reached Cloud Run.",
+      "type": "stat",
+      "timeFrom": "15m",
+      "hideTimeOverride": true,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
         "x": 8,
         "y": 3
       },
@@ -128,6 +261,7 @@
       },
       "targets": [
         {
+          "refId": "A",
           "queryType": "timeSeriesList",
           "datasource": {
             "type": "stackdriver",
@@ -138,48 +272,194 @@
             "filters": [
               "metric.type",
               "=",
-              "logging.googleapis.com/user/app_errors"
+              "monitoring.googleapis.com/uptime_check/check_passed",
+              "AND",
+              "resource.label.host",
+              "=",
+              "li-frontend-byshtpdfha-uc.a.run.app"
             ],
-            "perSeriesAligner": "ALIGN_SUM",
-            "crossSeriesReducer": "REDUCE_SUM",
+            "perSeriesAligner": "ALIGN_FRACTION_TRUE",
+            "crossSeriesReducer": "REDUCE_MEAN",
             "groupBys": [],
-            "alignmentPeriod": "3600s",
+            "alignmentPeriod": "300s",
             "view": "FULL",
             "preprocessor": "none"
-          },
-          "refId": "A"
+          }
         }
       ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "spanNulls": false,
-            "showPoints": "never"
-          }
+          "unit": "none",
+          "noValue": "Down",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.5
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1000000,
+                "result": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": -1,
+                "to": 0.499,
+                "result": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
         },
         "overrides": []
-      },
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
       }
     },
     {
-      "id": 5,
-      "title": "API 5xx responses",
+      "id": 36,
+      "title": "Load balancer",
+      "description": "The uptime check reached the load balancer. This does not test the API pods.",
+      "type": "stat",
+      "timeFrom": "15m",
+      "hideTimeOverride": true,
       "gridPos": {
-        "h": 7,
-        "w": 8,
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 3
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "monitoring.googleapis.com/uptime_check/check_passed",
+              "AND",
+              "resource.label.host",
+              "=",
+              "34-128-137-19.sslip.io"
+            ],
+            "perSeriesAligner": "ALIGN_FRACTION_TRUE",
+            "crossSeriesReducer": "REDUCE_MEAN",
+            "groupBys": [],
+            "alignmentPeriod": "300s",
+            "view": "FULL",
+            "preprocessor": "none"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "Down",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.5
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1000000,
+                "result": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": -1,
+                "to": 0.499,
+                "result": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 37,
+      "title": "Ingest pods",
+      "description": "At least one ingest pod reported in the last 15 minutes.",
+      "type": "stat",
+      "timeFrom": "15m",
+      "hideTimeOverride": true,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
         "x": 16,
         "y": 3
       },
@@ -189,6 +469,7 @@
       },
       "targets": [
         {
+          "refId": "A",
           "queryType": "timeSeriesList",
           "datasource": {
             "type": "stackdriver",
@@ -199,44 +480,198 @@
             "filters": [
               "metric.type",
               "=",
-              "loadbalancing.googleapis.com/https/request_count",
+              "kubernetes.io/container/uptime",
               "AND",
-              "metric.label.response_code_class",
+              "resource.label.namespace_name",
               "=",
-              "500"
+              "li",
+              "AND",
+              "resource.label.container_name",
+              "=",
+              "app",
+              "AND",
+              "resource.label.pod_name",
+              "=~",
+              "ingest-.*"
             ],
-            "perSeriesAligner": "ALIGN_SUM",
-            "crossSeriesReducer": "REDUCE_SUM",
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_COUNT",
             "groupBys": [],
-            "alignmentPeriod": "3600s",
+            "alignmentPeriod": "60s",
             "view": "FULL",
             "preprocessor": "none"
-          },
-          "refId": "A"
+          }
         }
       ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "spanNulls": false,
-            "showPoints": "never"
-          }
+          "unit": "none",
+          "noValue": "Down",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 1,
+                "to": 1000000,
+                "result": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": -1,
+                "to": 0.999,
+                "result": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
         },
         "overrides": []
+      }
+    },
+    {
+      "id": 38,
+      "title": "Search pods",
+      "description": "At least one search pod reported in the last 15 minutes.",
+      "type": "stat",
+      "timeFrom": "15m",
+      "hideTimeOverride": true,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 3
       },
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "mode": "multi"
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "kubernetes.io/container/uptime",
+              "AND",
+              "resource.label.namespace_name",
+              "=",
+              "li",
+              "AND",
+              "resource.label.container_name",
+              "=",
+              "app",
+              "AND",
+              "resource.label.pod_name",
+              "=~",
+              "search-.*"
+            ],
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_COUNT",
+            "groupBys": [],
+            "alignmentPeriod": "60s",
+            "view": "FULL",
+            "preprocessor": "none"
+          }
         }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "Down",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 1,
+                "to": 1000000,
+                "result": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": -1,
+                "to": 0.999,
+                "result": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
       }
     },
     {
@@ -248,7 +683,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 7
       },
       "panels": []
     },
@@ -259,7 +694,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 11
+        "y": 8
       },
       "datasource": {
         "type": "stackdriver",
@@ -327,7 +762,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 11
+        "y": 8
       },
       "datasource": {
         "type": "stackdriver",
@@ -394,7 +829,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 15
       },
       "panels": []
     },
@@ -405,7 +840,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 19
+        "y": 16
       },
       "datasource": {
         "type": "stackdriver",
@@ -469,7 +904,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 19
+        "y": 16
       },
       "datasource": {
         "type": "stackdriver",
@@ -532,7 +967,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 23
       },
       "panels": []
     },
@@ -546,7 +981,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 24
       },
       "datasource": {
         "type": "stackdriver",
@@ -627,7 +1062,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 24
       },
       "datasource": {
         "type": "stackdriver",
@@ -707,7 +1142,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 31
       },
       "panels": []
     },
@@ -718,7 +1153,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 35
+        "y": 32
       },
       "datasource": {
         "type": "stackdriver",
@@ -779,7 +1214,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 35
+        "y": 32
       },
       "datasource": {
         "type": "stackdriver",
@@ -840,7 +1275,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 35
+        "y": 32
       },
       "datasource": {
         "type": "stackdriver",
@@ -901,7 +1336,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 35
+        "y": 32
       },
       "datasource": {
         "type": "stackdriver",
@@ -968,7 +1403,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 39
       },
       "panels": []
     },
@@ -979,7 +1414,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 43
+        "y": 40
       },
       "datasource": {
         "type": "stackdriver",
@@ -1040,7 +1475,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 43
+        "y": 40
       },
       "datasource": {
         "type": "stackdriver",
@@ -1103,7 +1538,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 50
+        "y": 47
       },
       "panels": []
     },
@@ -1114,7 +1549,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 51
+        "y": 48
       },
       "datasource": {
         "type": "stackdriver",
@@ -1175,7 +1610,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 51
+        "y": 48
       },
       "datasource": {
         "type": "stackdriver",
@@ -1238,7 +1673,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 55
       },
       "panels": []
     },
@@ -1249,7 +1684,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 59
+        "y": 56
       },
       "datasource": {
         "type": "stackdriver",
@@ -1310,7 +1745,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 59
+        "y": 56
       },
       "datasource": {
         "type": "stackdriver",
@@ -1371,7 +1806,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 59
+        "y": 56
       },
       "datasource": {
         "type": "stackdriver",
@@ -1434,7 +1869,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 66
+        "y": 63
       },
       "panels": []
     },
@@ -1445,7 +1880,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 67
+        "y": 64
       },
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
@@ -1511,7 +1946,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 67
+        "y": 64
       },
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
@@ -1577,7 +2012,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 67
+        "y": 64
       },
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
@@ -1650,7 +2085,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 67
+        "y": 64
       },
       "datasource": {
         "type": "grafana-azure-monitor-datasource",

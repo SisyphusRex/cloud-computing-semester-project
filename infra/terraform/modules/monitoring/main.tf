@@ -83,6 +83,32 @@ resource "google_logging_metric" "backup_bytes" {
   }
 }
 
+# Real requests from outside, for what has no "up" metric of its own: Cloud Run
+# scales to zero, and the load balancer is deleted while the environment is paused.
+resource "google_monitoring_uptime_check_config" "this" {
+  for_each         = var.uptime_checks
+  display_name     = each.key
+  timeout          = "10s"
+  period           = "300s"
+  selected_regions = ["USA_IOWA", "USA_OREGON", "USA_VIRGINIA"]
+  user_labels      = var.labels
+
+  http_check {
+    path         = each.value.path
+    port         = 443
+    use_ssl      = true
+    validate_ssl = true
+  }
+
+  monitored_resource {
+    type = "uptime_url"
+    labels = {
+      project_id = var.project_id
+      host       = each.value.host
+    }
+  }
+}
+
 # Kubernetes records these events when a Job gives up, whatever made it fail.
 resource "google_monitoring_alert_policy" "backup_failed" {
   count        = var.notification_channel == "" ? 0 : 1

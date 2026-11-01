@@ -64,6 +64,18 @@ Panels refer to the data sources by their fixed UIDs, `li-gcp` and `li-azure`. A
 
 ## Read the dashboard
 
+The Health row shows Up or Down, and no value counts as Down:
+
+| Tile | Up means |
+|---|---|
+| Database | Cloud SQL reports the instance as up |
+| Backups | A backup succeeded in the last 26 hours |
+| Frontend | The `frontend` uptime check reached Cloud Run |
+| Load balancer | The `load-balancer` uptime check got an answer from `/healthz`. This doesn't test the API pods |
+| Ingest pods, Search pods | At least one pod reported in the last 15 minutes. A crash-looping pod can still count |
+
+While the environment is paused, every tile but Frontend shows Down, and Backups follows within 26 hours. The uptime checks run every 5 minutes from 3 US regions, and their hostnames are written into the dashboard, so update them if either address changes.
+
 - **Empty or flat charts** are expected while the environment is paused.
 - **A "No data" panel with a warning icon** means the metric has never had a value, or doesn't exist. `ingest_failed`, `backup_failed` and `search_failed` look like this until the first failure.
 - **Azure's storage charts report hourly,** so they can lag a backup by about an hour.

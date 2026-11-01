@@ -135,10 +135,16 @@ resource "google_secret_manager_secret_iam_member" "backup_sas" {
 
 module "monitoring" {
   source               = "../../modules/monitoring"
+  project_id           = var.gcp_project_id
   namespace            = var.k8s_namespace
   notification_channel = var.alert_notification_channel
   labels               = merge(local.labels, { component = "monitoring" })
-  depends_on           = [google_project_service.this]
+  # The app skips /healthz in its request logs, so these checks do not add to them.
+  uptime_checks = {
+    frontend      = { host = trimprefix(module.frontend.uri, "https://"), path = "/" }
+    load-balancer = { host = local.api_hostname, path = "/healthz" }
+  }
+  depends_on = [google_project_service.this]
 }
 
 # The API's public address. Without a domain of our own, sslip.io maps
