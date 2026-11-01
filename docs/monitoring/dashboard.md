@@ -53,6 +53,8 @@ The aligners and reducers used here:
 
 ## Panels
 
+Hover over a panel's **ⓘ** icon to see where its data comes from, how far behind it runs, and what it counts.
+
 Metric names are shortened where the prefix is obvious. `user/<name>` means `logging.googleapis.com/user/<name>`.
 
 ### Health
@@ -114,9 +116,11 @@ All four panels show the last 10 minutes.
 | Panel | Metric, under `cloudsql.googleapis.com/database/` | Filter | Aligner, reducer |
 |---|---|---|---|
 | CPU | `cpu/utilization` | None | `ALIGN_MEAN`, `REDUCE_MEAN` |
-| Memory | `memory/utilization` | None | `ALIGN_MEAN`, `REDUCE_MEAN` |
+| Memory | `memory/components` | One query each for `component = Usage` and `Cache` | `ALIGN_MEAN`, `REDUCE_MEAN` |
 | Disk | `disk/utilization` | None | `ALIGN_MEAN`, `REDUCE_MEAN` |
 | Connections | `postgresql/num_backends` | `database = li` | `ALIGN_MEAN`, `REDUCE_SUM` |
+
+Memory stacks Usage, then Cache on top, on a 0 to 100% axis. Free is the gap above them. They're two queries because Grafana stacks in query order, and a single query comes back alphabetically. Usage is what the database needs, and Cache is spare memory it can give back, so watch Usage. We don't chart `memory/utilization`, because on this instance `usage` always equals `quota`, so it stays at 100% whatever the real use is.
 
 ### Ingestion, Search and Backups
 

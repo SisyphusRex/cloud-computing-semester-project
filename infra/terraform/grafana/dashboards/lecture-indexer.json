@@ -45,7 +45,7 @@
     {
       "id": 3,
       "title": "Database",
-      "description": "Cloud SQL reports the instance as up.",
+      "description": "Built-in metric. Cloud SQL reports the instance as up.",
       "type": "stat",
       "timeFrom": "15m",
       "hideTimeOverride": true,
@@ -145,7 +145,7 @@
     {
       "id": 4,
       "title": "Backups",
-      "description": "At least one backup succeeded in the last 26 hours.",
+      "description": "Log-based metric. At least one backup succeeded in the last 26 hours.",
       "type": "stat",
       "timeFrom": "26h",
       "hideTimeOverride": true,
@@ -245,7 +245,7 @@
     {
       "id": 5,
       "title": "Frontend",
-      "description": "The uptime check reached Cloud Run.",
+      "description": "Uptime check, every 5 minutes. The uptime check reached Cloud Run.",
       "type": "stat",
       "timeFrom": "15m",
       "hideTimeOverride": true,
@@ -349,7 +349,7 @@
     {
       "id": 36,
       "title": "Load balancer",
-      "description": "The uptime check reached the load balancer. This does not test the API pods.",
+      "description": "Uptime check, every 5 minutes. The uptime check reached the load balancer. This does not test the API pods.",
       "type": "stat",
       "timeFrom": "15m",
       "hideTimeOverride": true,
@@ -453,7 +453,7 @@
     {
       "id": 37,
       "title": "Ingest pods",
-      "description": "At least one ingest pod reported in the last 15 minutes.",
+      "description": "Built-in metric. At least one ingest pod reported in the last 15 minutes.",
       "type": "stat",
       "timeFrom": "15m",
       "hideTimeOverride": true,
@@ -565,7 +565,7 @@
     {
       "id": 38,
       "title": "Search pods",
-      "description": "At least one search pod reported in the last 15 minutes.",
+      "description": "Built-in metric. At least one search pod reported in the last 15 minutes.",
       "type": "stat",
       "timeFrom": "15m",
       "hideTimeOverride": true,
@@ -754,7 +754,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Built-in metric, a few minutes behind. Includes the uptime check."
     },
     {
       "id": 8,
@@ -820,7 +821,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Built-in metric, a few minutes behind. 95% of requests were faster than this."
     },
     {
       "id": 9,
@@ -898,7 +900,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Built-in metric, a few minutes behind. Includes the uptime check, and errors from the load balancer that never reached a pod."
     },
     {
       "id": 11,
@@ -960,7 +963,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Built-in metric, a few minutes behind. 95% of requests were faster than this."
     },
     {
       "id": 12,
@@ -978,7 +982,7 @@
     {
       "id": 13,
       "title": "Ingest pods",
-      "description": "Pods over the last 10 minutes. Metrics arrive a few minutes late, and nothing is drawn while the environment is paused.",
+      "description": "Built-in metric, a few minutes behind. Pods reporting each minute, over the last 10 minutes. Nothing is drawn while paused.",
       "type": "timeseries",
       "timeFrom": "10m",
       "gridPos": {
@@ -1059,7 +1063,7 @@
     {
       "id": 14,
       "title": "Search pods",
-      "description": "Pods over the last 10 minutes. Metrics arrive a few minutes late, and nothing is drawn while the environment is paused.",
+      "description": "Built-in metric, a few minutes behind. Pods reporting each minute, over the last 10 minutes. Nothing is drawn while paused.",
       "type": "timeseries",
       "timeFrom": "10m",
       "gridPos": {
@@ -1195,7 +1199,9 @@
             "fillOpacity": 10,
             "spanNulls": false,
             "showPoints": "never"
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -1210,7 +1216,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Built-in metric, a few minutes behind. Share of the instance's CPU."
     },
     {
       "id": 18,
@@ -1237,42 +1244,116 @@
             "filters": [
               "metric.type",
               "=",
-              "cloudsql.googleapis.com/database/memory/utilization"
+              "cloudsql.googleapis.com/database/memory/components",
+              "AND",
+              "metric.label.component",
+              "=",
+              "Usage"
             ],
             "perSeriesAligner": "ALIGN_MEAN",
             "crossSeriesReducer": "REDUCE_MEAN",
-            "groupBys": [],
+            "groupBys": [
+              "metric.label.component"
+            ],
             "alignmentPeriod": "cloud-monitoring-auto",
             "view": "FULL",
             "preprocessor": "none"
           },
-          "refId": "A"
+          "refId": "A",
+          "aliasBy": "{{metric.label.component}}"
+        },
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "cloudsql.googleapis.com/database/memory/components",
+              "AND",
+              "metric.label.component",
+              "=",
+              "Cache"
+            ],
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_MEAN",
+            "groupBys": [
+              "metric.label.component"
+            ],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "B",
+          "aliasBy": "{{metric.label.component}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
+          "unit": "percent",
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 60,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "min": 0,
+          "max": 100
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Usage"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cache"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
       },
       "type": "timeseries",
       "options": {
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Built-in metric, a few minutes behind. Usage is what the database needs. Cache is spare memory it can give back. The gap above is free."
     },
     {
       "id": 19,
@@ -1319,7 +1400,9 @@
             "fillOpacity": 10,
             "spanNulls": false,
             "showPoints": "never"
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -1334,7 +1417,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Built-in metric, a few minutes behind. Share of the 10 GB disk."
     },
     {
       "id": 20,
@@ -1400,7 +1484,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Built-in metric, a few minutes behind. Open connections to the li database."
     },
     {
       "id": 21,
@@ -1475,7 +1560,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Log-based metric, a few minutes behind, counting from when it was created. Counts ingest_succeeded log lines. Empty unless a lecture was just registered."
     },
     {
       "id": 23,
@@ -1537,7 +1623,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Log-based metric, a few minutes behind, counting from when it was created. Counts ingest_failed log lines. No data is the healthy state."
     },
     {
       "id": 33,
@@ -1612,7 +1699,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Log-based metric, a few minutes behind, counting from when it was created. Counts successful transcript searches. Listing courses does not count. Empty unless someone just searched."
     },
     {
       "id": 35,
@@ -1674,7 +1762,8 @@
           "mode": "multi"
         }
       },
-      "timeFrom": "10m"
+      "timeFrom": "10m",
+      "description": "Log-based metric, a few minutes behind, counting from when it was created. Counts 5xx responses to searches. No data is the healthy state."
     },
     {
       "id": 24,
@@ -1748,7 +1837,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "description": "Log-based metric, a few minutes behind, counting from when it was created. Counts backup_succeeded log lines."
     },
     {
       "id": 26,
@@ -1809,7 +1899,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "description": "Log-based metric, a few minutes behind, counting from when it was created. Counts backup_failed log lines. No data is the healthy state."
     },
     {
       "id": 27,
@@ -1870,7 +1961,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "description": "Log-based metric, a few minutes behind, counting from when it was created. Approximate, because the metric keeps sizes in buckets."
     },
     {
       "id": 28,
@@ -1949,7 +2041,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "description": "Azure Monitor metric. Azure refreshes it a few times a day, so it can lag a backup by several hours. For the real list, run make cloud-restore ARGS=\"list\"."
     },
     {
       "id": 30,
@@ -2015,7 +2108,8 @@
         "tooltip": {
           "mode": "multi"
         }
-      }
+      },
+      "description": "Azure Monitor metric. Azure refreshes it a few times a day, so it can lag a backup by several hours. Total size of the stored backups."
     }
   ]
 }

@@ -82,7 +82,7 @@ While the environment is paused, every tile but Frontend shows Down, and Backups
 - **A "No data" panel with a warning icon** means the metric has never had a value, or doesn't exist. `ingest_failed`, `backup_failed` and `search_failed` look like this until the first failure.
 - **Azure's storage charts can lag a backup by several hours,** because Azure only refreshes them a few times a day. `make cloud-restore ARGS="list"` shows what's really there. The Backups row is the faster signal.
 - **Backup size is approximate.** It's a distribution, so it shows about 24.6 kB for a 22.7 kB backup. The exact size is in the `backup_succeeded` log line.
-- **Cloud SQL memory near 100%** has been normal on `db-f1-micro` so far. Look here first if queries slow down.
+- **Cloud SQL memory** stacks Usage and Cache, and the gap above them is free. High Cache is fine. Real pressure is Usage climbing while Cache shrinks.
 
 ## Rotate the credentials
 
