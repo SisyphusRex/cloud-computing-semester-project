@@ -539,9 +539,9 @@
     {
       "id": 13,
       "title": "Ingest pods",
-      "description": "Counted from the last 15 minutes, so a paused environment shows 0.",
-      "type": "stat",
-      "timeFrom": "15m",
+      "description": "Pods over the last 10 minutes. Metrics arrive a few minutes late, and nothing is drawn while the environment is paused.",
+      "type": "timeseries",
+      "timeFrom": "10m",
       "gridPos": {
         "h": 7,
         "w": 12,
@@ -553,21 +553,30 @@
         "uid": "li-gcp"
       },
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
         },
-        "colorMode": "value",
-        "graphMode": "none"
+        "tooltip": {
+          "mode": "single"
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "none",
           "decimals": 0,
-          "noValue": "0"
+          "min": 0,
+          "noValue": "0",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMax": 4
+          }
         },
         "overrides": []
       },
@@ -611,9 +620,9 @@
     {
       "id": 14,
       "title": "Search pods",
-      "description": "Counted from the last 15 minutes, so a paused environment shows 0.",
-      "type": "stat",
-      "timeFrom": "15m",
+      "description": "Pods over the last 10 minutes. Metrics arrive a few minutes late, and nothing is drawn while the environment is paused.",
+      "type": "timeseries",
+      "timeFrom": "10m",
       "gridPos": {
         "h": 7,
         "w": 12,
@@ -625,21 +634,30 @@
         "uid": "li-gcp"
       },
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
         },
-        "colorMode": "value",
-        "graphMode": "none"
+        "tooltip": {
+          "mode": "single"
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "none",
           "decimals": 0,
-          "noValue": "0"
+          "min": 0,
+          "noValue": "0",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisSoftMax": 6
+          }
         },
         "overrides": []
       },
@@ -1077,9 +1095,9 @@
       }
     },
     {
-      "id": 24,
+      "id": 33,
       "type": "row",
-      "title": "Backups",
+      "title": "Search",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -1090,13 +1108,148 @@
       "panels": []
     },
     {
+      "id": 34,
+      "title": "Searches",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 51
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/searches"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 35,
+      "title": "Search failures",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 51
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/search_failed"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 24,
+      "type": "row",
+      "title": "Backups",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 58
+      },
+      "panels": []
+    },
+    {
       "id": 25,
       "title": "Backups succeeded",
       "gridPos": {
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 51
+        "y": 59
       },
       "datasource": {
         "type": "stackdriver",
@@ -1157,7 +1310,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 51
+        "y": 59
       },
       "datasource": {
         "type": "stackdriver",
@@ -1218,7 +1371,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 51
+        "y": 59
       },
       "datasource": {
         "type": "stackdriver",
@@ -1281,7 +1434,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 66
       },
       "panels": []
     },
@@ -1292,7 +1445,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 59
+        "y": 67
       },
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
@@ -1358,7 +1511,7 @@
         "h": 7,
         "w": 6,
         "x": 6,
-        "y": 59
+        "y": 67
       },
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
@@ -1424,7 +1577,7 @@
         "h": 7,
         "w": 6,
         "x": 12,
-        "y": 59
+        "y": 67
       },
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
@@ -1497,7 +1650,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 59
+        "y": 67
       },
       "datasource": {
         "type": "grafana-azure-monitor-datasource",

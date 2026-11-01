@@ -6,6 +6,7 @@ output "log_metric_names" {
   description = "Charted under logging.googleapis.com/user/<name>."
   value = concat(
     [for m in google_logging_metric.event : m.name],
+    [for m in google_logging_metric.search : m.name],
     [google_logging_metric.app_errors.name, google_logging_metric.backup_bytes.name],
   )
 }

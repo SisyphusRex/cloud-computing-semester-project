@@ -65,7 +65,7 @@ Panels refer to the data sources by their fixed UIDs, `li-gcp` and `li-azure`. A
 ## Read the dashboard
 
 - **Empty or flat charts** are expected while the environment is paused.
-- **A "No data" panel with a warning icon** means the metric has never had a value, or doesn't exist. `ingest_failed` and `backup_failed` look like this until the first failure.
+- **A "No data" panel with a warning icon** means the metric has never had a value, or doesn't exist. `ingest_failed`, `backup_failed` and `search_failed` look like this until the first failure.
 - **Azure's storage charts report hourly,** so they can lag a backup by about an hour.
 - **Backup size is approximate.** It's a distribution, so it shows about 24.6 kB for a 22.7 kB backup. The exact size is in the `backup_succeeded` log line.
 - **Cloud SQL memory near 100%** has been normal on `db-f1-micro` so far. Look here first if queries slow down.

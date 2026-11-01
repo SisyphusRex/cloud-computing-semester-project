@@ -113,6 +113,7 @@ run "wiring" {
   assert {
     condition = toset(module.monitoring.log_metric_names) == toset([
       "app_errors", "backup_bytes", "backup_failed", "backup_succeeded", "ingest_failed", "ingest_succeeded",
+      "search_failed", "searches",
     ])
     error_message = "unexpected log-based metrics"
   }

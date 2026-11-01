@@ -10,12 +10,36 @@ locals {
     "ingest_succeeded",
     "ingest_failed",
   ])
+
+  # A search is a GET on this route: not listing courses, or a browser's OPTIONS
+  # preflight. Failures are server errors; a 4xx is a bad request or a sign-in.
+  search_request = <<-EOT
+    jsonPayload.event="http_request"
+    jsonPayload.method="GET"
+    jsonPayload.route="/search/courses/<int:course_id>/segments"
+  EOT
+
+  search_counters = {
+    searches      = "jsonPayload.status=200"
+    search_failed = "jsonPayload.status>=500"
+  }
 }
 
 resource "google_logging_metric" "event" {
   for_each = local.event_counters
   name     = each.value
   filter   = "jsonPayload.event=\"${each.value}\""
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+}
+
+resource "google_logging_metric" "search" {
+  for_each = local.search_counters
+  name     = each.key
+  filter   = "${local.search_request}${each.value}"
 
   metric_descriptor {
     metric_kind = "DELTA"

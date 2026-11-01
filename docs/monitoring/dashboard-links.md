@@ -84,7 +84,7 @@ Some resources can't carry labels:
 | Router `li-router`, NAT `li-nat` | Outbound internet for the private nodes, e.g. to Azure Blob |
 | Service accounts `li-ingest`, `li-search`, `li-migrate`, `li-backup` | One identity per workload |
 | Service account and Azure app `li-grafana` | Read-only access for Grafana Cloud |
-| Log-based metrics `app_errors`, `backup_*`, `ingest_*` | What the dashboard charts from the logs |
+| Log-based metrics `app_errors`, `backup_*`, `ingest_*`, `searches`, `search_failed` | What the dashboard charts from the logs |
 | Service accounts `li-nodes`, `li-frontend` | GKE nodes, and the Cloud Run frontend |
 | Service accounts `github-terraform`, `github-deploy`, `github-plan` | GitHub Actions: apply, deploy, read-only plan |
 | Workload Identity pool `github` | Lets GitHub Actions sign in to Google Cloud without keys |
