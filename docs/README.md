@@ -15,6 +15,7 @@ Where to find things, and where new things belong. New to the project? Start wit
 | Ship or undo a change | [Release process](release-process.md) |
 | Provision, pause or tear down the cloud environment | [Bootstrap runbook](runbooks/bootstrap.md) |
 | Back up or restore the database | [Backup runbook](runbooks/backup-and-restore.md) |
+| Give someone access to the clouds and the app | [Team access](runbooks/team-access.md) |
 | Test against real Google and YouTube | [Real Google test](runbooks/real-google-test.md) |
 | Find a console, a resource or an environment value | [Environment and dashboard links](monitoring/dashboard-links.md) |
 | Understand what the dashboard shows | [The Grafana dashboard](monitoring/dashboard.md) |

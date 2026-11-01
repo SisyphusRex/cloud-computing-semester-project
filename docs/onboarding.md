@@ -20,7 +20,7 @@ A professor registers a YouTube lecture, LI indexes its auto-generated captions,
 
 ## Access to request
 
-Ask the project owner. Nothing here is needed to run the app locally. Details are in the [to-do list](todo.md#give-teammates-access-to-the-clouds-and-the-app).
+Ask the project owner. Nothing here is needed to run the app locally. Details are in the [team access runbook](runbooks/team-access.md).
 
 - **GitHub:** collaborator access, and `prod` reviewer if you'll approve releases.
 - **Google:** a test user on the OAuth consent screen, needed for real sign-in. While the app is in testing mode, Google refuses everyone else.

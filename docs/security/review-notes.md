@@ -21,6 +21,14 @@ Everything earlier work set aside for the [M3 security review](../milestones/m3_
 - **Grafana Cloud's credentials** ([ADR 0005](../architecture_decision_records/0005-monitoring-on-grafana-cloud.md)). A Google service account key and an Azure client secret are held by Grafana Labs: our first long-lived credentials outside our own clouds. The key is limited to `roles/monitoring.viewer`, and never expires. The secret is limited to `Monitoring Reader` on `rg-li-backup`, and expires 2027-11-01. Neither can change anything, or read the database, secrets or backups. They're kept out of Terraform state, and the [monitoring runbook](../runbooks/monitoring.md#revoke-a-leaked-credential) covers rotating and revoking them.
 - **Grafana admin token.** A Grafana service account token with the Admin role can read and replace data sources. It's kept encrypted on one machine, and never goes into GitHub.
 
+## Availability and abuse
+
+- **No rate limiting** ([wishlist](../wishlist.md#limit-requests-at-the-load-balancer)). The API sits behind a load balancer, not an API gateway, and nothing limits how many requests a client can send. Most routes need a sign-in, but those requests still reach the pods and the database, and a signed-in professor could use up the YouTube quota (10,000 units a day; one registration costs 252). A flood could also scale the pods up to their limits, and raise costs. Cloud Armor could add a limit by IP address on this load balancer.
+
 ## Browser security
 
 - **CSP** ([ADR 0001](../architecture_decision_records/0001-frontend-on-cloud-run.md)). It's now set by nginx, and its `connect-src` names the API origin at build time.
+
+## Monitoring and response
+
+- **Only backup failures raise an alert** ([dashboard reference](../monitoring/dashboard.md)). "Database backup failed" is the one alert, and it only fires when a backup Job gives up. Nothing alerts on the site or API going down, on application errors, or on a backup that never ran. Those show on the Grafana dashboard, if someone looks, except application errors: `app_errors` is recorded, but no panel shows it. So an outage or an attack could go unnoticed until someone opens the dashboard.

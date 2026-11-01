@@ -26,7 +26,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "Flat or empty charts are expected while the environment is paused (`make cloud-pause`). Azure storage charts report hourly, so they can lag a backup by about an hour."
+        "content": "Flat or empty charts are expected while the environment is paused (`make cloud-pause`). Azure storage charts can lag a backup by several hours."
       }
     },
     {

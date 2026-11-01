@@ -15,6 +15,12 @@ Two improvements, independent of each other:
    - Keep other tools from clearing the flag: releases and `rollback.yml` already don't deploy while paused, but Terraform would remove an environment variable set by `gcloud`. Add `template[0].containers[0].env` to `ignore_changes` in [`modules/cloud-run-frontend`](../infra/terraform/modules/cloud-run-frontend/main.tf), or use the bucket file instead.
    - Update `cloud-power.sh`'s step list and the runbook.
 
+## Add teammates to the failure alert
+
+**Today:** "Database backup failed" emails one address, so a failed backup depends on one person's inbox. The team decided to leave it that way for now.
+
+**Option:** follow [Add teammates to the failure alert](runbooks/backup-and-restore.md#add-teammates-to-the-failure-alert). It takes a channel per person, a small Terraform change and a release.
+
 ## Limit requests at the load balancer
 
 **Today:** the API sits behind a load balancer, not an API gateway. It routes requests and handles HTTPS, and the Flask services check sign-ins. Nothing limits how many requests a client can send, so a flood would reach the pods, and registering lectures could use up the YouTube quota (10,000 units a day; one registration costs 252).

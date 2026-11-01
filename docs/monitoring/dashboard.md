@@ -155,7 +155,7 @@ All four panels read the Blob service of storage account `libackupecd087147d`, i
 | Transactions by result | `Transactions` | Total | `ResponseType` |
 | Availability | `Availability` | Average | None |
 
-`BlobCount` and `BlobCapacity` update hourly, so they can lag a backup by about an hour. Azure only reports Availability for hours with traffic, so that panel draws dots.
+`BlobCount` and `BlobCapacity` have hourly points, but Azure only refreshes them a few times a day, so they can lag a backup by several hours. We measured delays from about 1.5 hours to at least 4 hours. To see what's really there, run `make cloud-restore ARGS="list"`. Azure only reports Availability for hours with traffic, so that panel draws dots.
 
 These panels show that storage changed, not that a backup can be restored. The [restore test](../runbooks/backup-and-restore.md#test-a-restore) proves that.
 
