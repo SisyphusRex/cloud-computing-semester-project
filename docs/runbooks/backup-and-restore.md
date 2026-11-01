@@ -14,6 +14,40 @@ How the production database is backed up to Azure, how to set that up, and how t
 
 Backups run at 08:00 UTC, are named `li-<UTC time>.dump.age`, can't be changed or deleted for 30 days, and are deleted automatically at 35 days.
 
+## How a backup runs
+
+Backups run as a Kubernetes CronJob named `backup`, in the `li` namespace. It's a stored object in the GKE cluster, not a running program: nothing runs between backups, and it uses no pod or node while it waits. It's defined in `deploy/k8s/base/backup/cronjob.yaml`, and each release applies that file, so a manual `kubectl` edit only lasts until the next release.
+
+```
+CronJob backup → Job → Pod
+                        ├── cloud-sql-proxy (helper: connects to Cloud SQL)
+                        └── backup (runs backup/backup.sh, then exits)
+```
+
+1. **The schedule fires.** At 08:00 UTC, Kubernetes creates a Job from the CronJob. `make cloud-backup` does the same at any time, with a name like `backup-manual-<time>`. If a run is missed, one late run is allowed within an hour. Runs never overlap.
+2. **The Job creates a pod** on a Spot node, which is cheaper but can be taken away at any time. The pod runs as the `backup` service account, which Workload Identity maps to the Google account `li-backup`. That's what lets it read its two secrets from Secret Manager, `db-admin-password` and `backup-sas`, mounted as files in `/secrets`.
+3. **The proxy starts first.** `cloud-sql-proxy` opens a connection to the database's private IP, and the backup connects to it on `127.0.0.1`, as `li_admin`.
+4. **`backup/backup.sh` does the work:**
+   - **Dump and encrypt.** `pg_dump` streams straight into `age`, so the unencrypted dump never reaches the disk. `age` needs only the public key, so the cluster can't read the result.
+   - **Check the size.** It stops if the file is under 1 KiB, which means something went wrong.
+   - **Upload.** `curl` sends the file to Azure Blob Storage with the create-only SAS, as `li-<UTC time>.dump.age`.
+   - **Log the result.** It logs `backup_succeeded` with the size, or `backup_failed`, and removes its local file.
+5. **The pod finishes.** When the `backup` container exits, the proxy stops too, and the pod uses no more CPU or memory.
+
+**If it fails,** the Job starts a new pod, up to 2 more times. A retry writes a new blob with a new name, so it can't damage an earlier backup. The whole Job has 30 minutes, including retries. If it gives up, Kubernetes records an event, and that triggers the failure alert: see [When the alert fires](#when-the-alert-fires).
+
+**Finished pods stay listed** as `Completed` or `Error`, so their logs can be read. Kubernetes keeps the last 3 successful Jobs and the last 3 failed ones:
+
+```sh
+kubectl -n li get cronjob backup                         # schedule, SUSPEND, LAST SCHEDULE
+kubectl -n li get jobs -l app.kubernetes.io/name=backup
+kubectl -n li logs job/<name> -c backup
+```
+
+**While paused,** the database is stopped, so no backup could run. `make cloud-pause` takes one first, stops if that fails, and suspends the CronJob. `make cloud-resume` turns it back on.
+
+**After the upload,** Azure keeps each blob unchangeable for 30 days, and deletes it at 35. The result also reaches the [dashboard](../monitoring/dashboard.md#ingestion-search-and-backups), through log-based metrics. Only the offline private key can decrypt a backup. The design and its reasons are in [ADR 0004](../architecture_decision_records/0004-database-backups-to-azure.md).
+
 ## First-time setup
 
 The order matters. Backups need values from Terraform, and Kubernetes can't start the job until its secret has a value. So setup takes two releases: the second needs values that only exist after the first, and a release refuses to run while `REPLACE_ME` is in `values.env`. It takes about an hour, mostly waiting for releases. Run everything from the repository root, and stop and fix anything that fails before moving on. The [record of our setup](../milestones/m3_technical_review/azure-backup-setup.md) shows how this went in practice.

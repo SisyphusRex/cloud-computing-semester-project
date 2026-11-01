@@ -4,6 +4,58 @@ How Lecture Indexer (LI) is built and why. This page describes the system as dep
 
 ## Architecture
 
+The system as deployed. Solid arrows are requests and data, and dotted arrows are monitoring. To keep the diagram readable, Cloud SQL stands in for every Google Cloud service that reports to Cloud Monitoring, and the arrows from GitHub stand in for its keyless sign-in to both clouds.
+
+```mermaid
+flowchart TB
+  users(["Professors and students"])
+
+  subgraph gcp["Google Cloud"]
+    frontend["Web app<br/>Cloud Run"]
+    lb["HTTPS load balancer"]
+    subgraph gke["GKE Autopilot, private nodes"]
+      ingest["Ingest API<br/>1 to 4 pods"]
+      search["Search API<br/>1 to 6 pods"]
+      backup["Backup CronJob<br/>nightly, encrypted"]
+    end
+    sql[("Cloud SQL PostgreSQL<br/>private IP, full-text search")]
+    secrets["Secret Manager"]
+    monitoring["Cloud Monitoring<br/>metrics, logs, uptime checks"]
+    registry["Artifact Registry"]
+  end
+
+  subgraph azure["Microsoft Azure"]
+    blob[("Blob Storage<br/>immutable backups")]
+    azuremonitor["Azure Monitor"]
+  end
+
+  signin["Google Sign-In"]
+  youtube["YouTube Data API"]
+  grafana["Grafana Cloud<br/>dashboard"]
+  github["GitHub Actions<br/>and Terraform"]
+
+  users --> signin
+  users --> frontend
+  users --> lb
+  lb --> search
+  lb --> ingest
+  ingest ---> youtube
+  search --> sql
+  ingest --> sql
+  backup --> sql
+  secrets --> backup
+  backup --> blob
+
+  sql -.-> monitoring
+  blob -.-> azuremonitor
+  monitoring -.-> grafana
+  azuremonitor -.-> grafana
+
+  github -- images --> registry
+  registry --> gke
+  github -- keyless OIDC --> azure
+```
+
 Per the proposal:
 
 - **Frontend**: React + Vite + TypeScript SPA served by nginx on **Cloud Run** (the proposal said Azure Static Web Apps; see [ADR 0001](architecture_decision_records/0001-frontend-on-cloud-run.md)); Google Sign-In (OAuth 2.0 / OIDC).

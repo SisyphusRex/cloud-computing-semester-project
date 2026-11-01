@@ -35,7 +35,7 @@ The values of our deployed environment, and where to look at the running system 
 | Dashboard | https://silverlinden1722.grafana.net/d/lecture-indexer | Google Cloud services and Azure backup storage, on one page |
 | Data sources | https://silverlinden1722.grafana.net/connections/datasources | `Google Cloud Monitoring` (`li-gcp`) and `Azure Monitor` (`li-azure`). The `grafanacloud-*` ones come with every stack, and we don't use them |
 
-How to set it up and look after it: the [monitoring runbook](../runbooks/monitoring.md).
+What each panel shows and how it's queried: [The Grafana dashboard](dashboard.md). How to set it up and look after it: the [monitoring runbook](../runbooks/monitoring.md).
 
 ## Google Cloud
 

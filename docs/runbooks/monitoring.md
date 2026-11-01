@@ -64,6 +64,8 @@ Panels refer to the data sources by their fixed UIDs, `li-gcp` and `li-azure`. A
 
 ## Read the dashboard
 
+Every panel and its query are in [The Grafana dashboard](../monitoring/dashboard.md).
+
 The Health row shows Up or Down, and no value counts as Down:
 
 | Tile | Up means |
