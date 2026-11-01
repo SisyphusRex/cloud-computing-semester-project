@@ -1,0 +1,1639 @@
+{
+  "uid": "lecture-indexer",
+  "title": "Lecture Indexer",
+  "description": "Google Cloud services and Azure backup storage, on one page.",
+  "tags": [
+    "lecture-indexer"
+  ],
+  "timezone": "browser",
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Flat or empty charts are expected while the environment is paused (`make cloud-pause`). Azure storage charts report hourly, so they can lag a backup by about an hour."
+      }
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Health",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "panels": []
+    },
+    {
+      "id": 3,
+      "title": "Database up",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 3
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "cloudsql.googleapis.com/database/up"
+            ],
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_MIN",
+            "groupBys": [],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Down",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Up",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "type": "stat",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "title": "App errors",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 3
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/app_errors"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "API 5xx responses",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 3
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "loadbalancing.googleapis.com/https/request_count",
+              "AND",
+              "metric.label.response_code_class",
+              "=",
+              "500"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "Frontend (Cloud Run)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "title": "Requests by status",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "run.googleapis.com/request_count",
+              "AND",
+              "resource.label.service_name",
+              "=",
+              "li-frontend"
+            ],
+            "perSeriesAligner": "ALIGN_RATE",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [
+              "metric.label.response_code_class"
+            ],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "aliasBy": "{{metric.label.response_code_class}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Response time, p95",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "run.googleapis.com/request_latencies",
+              "AND",
+              "resource.label.service_name",
+              "=",
+              "li-frontend"
+            ],
+            "perSeriesAligner": "ALIGN_PERCENTILE_95",
+            "crossSeriesReducer": "REDUCE_MAX",
+            "groupBys": [],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "API (load balancer)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "title": "Requests by status",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 19
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "loadbalancing.googleapis.com/https/request_count"
+            ],
+            "perSeriesAligner": "ALIGN_RATE",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [
+              "metric.label.response_code_class"
+            ],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "aliasBy": "{{metric.label.response_code_class}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Response time, p95",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 19
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "loadbalancing.googleapis.com/https/total_latencies"
+            ],
+            "perSeriesAligner": "ALIGN_PERCENTILE_95",
+            "crossSeriesReducer": "REDUCE_MAX",
+            "groupBys": [],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "GKE",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": []
+    },
+    {
+      "id": 13,
+      "title": "CPU by pod",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 27
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "kubernetes.io/container/cpu/core_usage_time",
+              "AND",
+              "resource.label.namespace_name",
+              "=",
+              "li",
+              "AND",
+              "resource.label.container_name",
+              "=",
+              "app"
+            ],
+            "perSeriesAligner": "ALIGN_RATE",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [
+              "resource.label.pod_name"
+            ],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "aliasBy": "{{resource.label.pod_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Memory by pod",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 27
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "kubernetes.io/container/memory/used_bytes",
+              "AND",
+              "resource.label.namespace_name",
+              "=",
+              "li",
+              "AND",
+              "resource.label.container_name",
+              "=",
+              "app",
+              "AND",
+              "metric.label.memory_type",
+              "=",
+              "non-evictable"
+            ],
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [
+              "resource.label.pod_name"
+            ],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "aliasBy": "{{resource.label.pod_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "Container restarts",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 27
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "kubernetes.io/container/restart_count",
+              "AND",
+              "resource.label.namespace_name",
+              "=",
+              "li",
+              "AND",
+              "resource.label.container_name",
+              "=",
+              "app"
+            ],
+            "perSeriesAligner": "ALIGN_DELTA",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [
+              "resource.label.pod_name"
+            ],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "aliasBy": "{{resource.label.pod_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "Cloud SQL",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "title": "CPU",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 35
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "cloudsql.googleapis.com/database/cpu/utilization"
+            ],
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_MEAN",
+            "groupBys": [],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "title": "Memory",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 6,
+        "y": 35
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "cloudsql.googleapis.com/database/memory/utilization"
+            ],
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_MEAN",
+            "groupBys": [],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 19,
+      "title": "Disk",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 35
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "cloudsql.googleapis.com/database/disk/utilization"
+            ],
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_MEAN",
+            "groupBys": [],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "title": "Connections",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 35
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "cloudsql.googleapis.com/database/postgresql/num_backends",
+              "AND",
+              "metric.label.database",
+              "=",
+              "li"
+            ],
+            "perSeriesAligner": "ALIGN_MEAN",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "cloud-monitoring-auto",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": "row",
+      "title": "Ingestion",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "panels": []
+    },
+    {
+      "id": 22,
+      "title": "Lectures ingested",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/ingest_succeeded"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 23,
+      "title": "Ingest failures",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 43
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/ingest_failed"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 24,
+      "type": "row",
+      "title": "Backups",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "panels": []
+    },
+    {
+      "id": 25,
+      "title": "Backups succeeded",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 51
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/backup_succeeded"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 26,
+      "title": "Backups failed",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 51
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/backup_failed"
+            ],
+            "perSeriesAligner": "ALIGN_SUM",
+            "crossSeriesReducer": "REDUCE_SUM",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "title": "Backup size",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 51
+      },
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "li-gcp"
+      },
+      "targets": [
+        {
+          "queryType": "timeSeriesList",
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "li-gcp"
+          },
+          "timeSeriesList": {
+            "projectName": "lecture-indexer-511419",
+            "filters": [
+              "metric.type",
+              "=",
+              "logging.googleapis.com/user/backup_bytes"
+            ],
+            "perSeriesAligner": "ALIGN_PERCENTILE_50",
+            "crossSeriesReducer": "REDUCE_MAX",
+            "groupBys": [],
+            "alignmentPeriod": "3600s",
+            "view": "FULL",
+            "preprocessor": "none"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 28,
+      "type": "row",
+      "title": "Azure backup storage",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 58
+      },
+      "panels": []
+    },
+    {
+      "id": 29,
+      "title": "Backups stored",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 59
+      },
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "li-azure"
+      },
+      "targets": [
+        {
+          "queryType": "Azure Monitor",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "li-azure"
+          },
+          "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
+          "azureMonitor": {
+            "metricName": "BlobCount",
+            "metricNamespace": "microsoft.storage/storageaccounts/blobservices",
+            "aggregation": "Average",
+            "timeGrain": "PT1H",
+            "region": "northcentralus",
+            "allowedTimeGrainsMs": [],
+            "dimensionFilters": [],
+            "resources": [
+              {
+                "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
+                "resourceGroup": "rg-li-backup",
+                "resourceName": "libackupecd087147d/default",
+                "metricNamespace": "Microsoft.Storage/storageAccounts/blobServices",
+                "region": "northcentralus"
+              }
+            ]
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 30,
+      "title": "Storage used",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 6,
+        "y": 59
+      },
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "li-azure"
+      },
+      "targets": [
+        {
+          "queryType": "Azure Monitor",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "li-azure"
+          },
+          "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
+          "azureMonitor": {
+            "metricName": "BlobCapacity",
+            "metricNamespace": "microsoft.storage/storageaccounts/blobservices",
+            "aggregation": "Average",
+            "timeGrain": "PT1H",
+            "region": "northcentralus",
+            "allowedTimeGrainsMs": [],
+            "dimensionFilters": [],
+            "resources": [
+              {
+                "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
+                "resourceGroup": "rg-li-backup",
+                "resourceName": "libackupecd087147d/default",
+                "metricNamespace": "Microsoft.Storage/storageAccounts/blobServices",
+                "region": "northcentralus"
+              }
+            ]
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 31,
+      "title": "Transactions by result",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 59
+      },
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "li-azure"
+      },
+      "targets": [
+        {
+          "queryType": "Azure Monitor",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "li-azure"
+          },
+          "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
+          "azureMonitor": {
+            "metricName": "Transactions",
+            "metricNamespace": "microsoft.storage/storageaccounts/blobservices",
+            "aggregation": "Total",
+            "timeGrain": "PT1H",
+            "region": "northcentralus",
+            "allowedTimeGrainsMs": [],
+            "dimensionFilters": [
+              {
+                "dimension": "ResponseType",
+                "operator": "eq",
+                "filters": []
+              }
+            ],
+            "resources": [
+              {
+                "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
+                "resourceGroup": "rg-li-backup",
+                "resourceName": "libackupecd087147d/default",
+                "metricNamespace": "Microsoft.Storage/storageAccounts/blobServices",
+                "region": "northcentralus"
+              }
+            ],
+            "alias": "{{ dimensionvalue }}"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 32,
+      "title": "Availability",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 59
+      },
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "li-azure"
+      },
+      "targets": [
+        {
+          "queryType": "Azure Monitor",
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "li-azure"
+          },
+          "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
+          "azureMonitor": {
+            "metricName": "Availability",
+            "metricNamespace": "microsoft.storage/storageaccounts/blobservices",
+            "aggregation": "Average",
+            "timeGrain": "PT1H",
+            "region": "northcentralus",
+            "allowedTimeGrainsMs": [],
+            "dimensionFilters": [],
+            "resources": [
+              {
+                "subscription": "898a010f-f766-4657-b683-6fb3c7399a77",
+                "resourceGroup": "rg-li-backup",
+                "resourceName": "libackupecd087147d/default",
+                "metricNamespace": "Microsoft.Storage/storageAccounts/blobServices",
+                "region": "northcentralus"
+              }
+            ]
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "points",
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "showPoints": "always",
+            "pointSize": 6
+          },
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    }
+  ]
+}

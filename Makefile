@@ -7,7 +7,7 @@ TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
 .PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
 	frontend-install frontend-dev frontend-test frontend-image k8s-check docs-check release-diff cloud-status cloud-pause cloud-resume \
-	cloud-backup cloud-backup-sas cloud-restore cloud-create-admin cloud-admin report
+	cloud-backup cloud-backup-sas cloud-restore cloud-grafana-credentials cloud-create-admin cloud-admin report
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-24s %s\n", $$1, $$2}'
@@ -94,6 +94,9 @@ cloud-backup-sas: ## Create or renew the SAS that backups upload with; see ADR 0
 cloud-restore: ## List or restore backups (ARGS="list", ARGS="restore BLOB KEYFILE [--overwrite]")
 	@test -n "$(ARGS)" || { echo 'usage: make cloud-restore ARGS="list"'; exit 2; }
 	scripts/cloud-restore.sh $(ARGS)
+
+cloud-grafana-credentials: ## Create or rotate Grafana Cloud's read-only credentials; see docs/monitoring/grafana-cloud-plan.md
+	scripts/cloud-grafana-credentials.sh
 
 cloud-create-admin: ## Make EMAIL an admin in prod (EMAIL=you@example.com); see ADR 0003
 	@test -n "$(EMAIL)" || { echo 'usage: make cloud-create-admin EMAIL=you@example.com'; exit 2; }

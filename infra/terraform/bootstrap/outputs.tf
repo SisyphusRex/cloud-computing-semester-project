@@ -24,3 +24,13 @@ output "backup_container_url" {
   description = "BACKUP_CONTAINER_URL in deploy/k8s/overlays/prod/values/values.env."
   value       = module.backup_storage.container_url
 }
+
+output "grafana_gcp_service_account" {
+  description = "Who the Google key belongs to; scripts/cloud-grafana-credentials.sh creates the key."
+  value       = google_service_account.grafana.email
+}
+
+output "grafana_azure_client_id" {
+  description = "The app whose client secret scripts/cloud-grafana-credentials.sh creates."
+  value       = azuread_application.grafana.client_id
+}

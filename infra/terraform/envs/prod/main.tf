@@ -135,6 +135,7 @@ resource "google_secret_manager_secret_iam_member" "backup_sas" {
 
 module "monitoring" {
   source               = "../../modules/monitoring"
+  namespace            = var.k8s_namespace
   notification_channel = var.alert_notification_channel
   labels               = merge(local.labels, { component = "monitoring" })
   depends_on           = [google_project_service.this]

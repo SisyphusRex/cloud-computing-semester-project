@@ -4,6 +4,11 @@ variable "notification_channel" {
   default     = ""
 }
 
+variable "namespace" {
+  description = "Namespace the app runs in; app_errors counts only its containers."
+  type        = string
+}
+
 variable "labels" {
   description = "Labels for the console; see docs/monitoring/dashboard-links.md."
   type        = map(string)

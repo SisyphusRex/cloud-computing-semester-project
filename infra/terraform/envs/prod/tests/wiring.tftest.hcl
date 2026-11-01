@@ -108,6 +108,14 @@ run "wiring" {
     condition     = length(module.cloudsql.iam_usernames) == 2
     error_message = "only ingest and search get IAM database users"
   }
+
+  # The Grafana dashboard refers to these by name.
+  assert {
+    condition = toset(module.monitoring.log_metric_names) == toset([
+      "app_errors", "backup_bytes", "backup_failed", "backup_succeeded", "ingest_failed", "ingest_succeeded",
+    ])
+    error_message = "unexpected log-based metrics"
+  }
 }
 
 run "frontend_access" {
