@@ -74,7 +74,7 @@ The Health row shows Up or Down, and no value counts as Down:
 | Backups | A backup succeeded in the last 26 hours |
 | Frontend | The `frontend` uptime check reached Cloud Run |
 | Load balancer | The `load-balancer` uptime check got an answer from `/healthz`. This doesn't test the API pods |
-| Ingest pods, Search pods | At least one pod reported in the last 15 minutes. A crash-looping pod can still count |
+| Ingest pods, Search pods | At least one pod reported in the last 3 minutes. A crash-looping pod can still count |
 
 While the environment is paused, every tile but Frontend shows Down, and Backups follows within 26 hours. The uptime checks run every 5 minutes from 3 US regions, and their hostnames are written into the dashboard, so update them if either address changes.
 

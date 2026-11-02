@@ -21,6 +21,18 @@ Two improvements, independent of each other:
 
 **Option:** follow [Add teammates to the failure alert](runbooks/backup-and-restore.md#add-teammates-to-the-failure-alert). It takes a channel per person, a small Terraform change and a release.
 
+## Fresher API metrics with Prometheus
+
+**Today:** the dashboard's Google metrics arrive a few minutes late, and it refreshes every 5 minutes. Lowering the refresh is the cheaper first step.
+
+**Option:** scrape the Flask services with Google Cloud Managed Service for Prometheus, which is already turned on for the cluster, to get API metrics within about a minute.
+
+- Add a `/metrics` endpoint to both services with a Prometheus client library, and a scrape config in `deploy/k8s`.
+- Grafana could read it through the existing `li-gcp` data source using PromQL, with no new credential. Test this first.
+- Rewrite the affected panels, and lower the dashboard's refresh.
+- Check the cost first: Google charges for Prometheus samples.
+- It only covers the API pods. Cloud Run, the load balancer, Cloud SQL and Azure keep their current delays.
+
 ## Limit requests at the load balancer
 
 **Today:** the API sits behind a load balancer, not an API gateway. It routes requests and handles HTTPS, and the Flask services check sign-ins. Nothing limits how many requests a client can send, so a flood would reach the pods, and registering lectures could use up the YouTube quota (10,000 units a day; one registration costs 252).
@@ -55,6 +67,20 @@ Two improvements, independent of each other:
 - Tests in `services/common/tests/test_admin_cli.py`: revoke, the last-admin guard, and the audit row.
 - Docs: the `li-admin` list in `services/README.md`, and the database access guide, which should point to this command instead of SQL.
 - Optionally, also `disable`, so the CLI can undo everything it can grant.
+
+## Test rotating the Grafana credentials
+
+**Today:** `make cloud-grafana-credentials` has only created the credentials, never replaced them, so rotation is scripted but untested. Nothing has leaked. The Azure secret expires on 2027-11-01, and the Google key never expires.
+
+**Option:** run it again, and confirm that the old credentials stop working and both data sources still pass **Save & test** ([steps](runbooks/monitoring.md#rotate-the-credentials)). It takes about 5 minutes, and moves the Azure expiry a year out, so update the calendar.
+
+## Test the onboarding guide
+
+Have someone who hasn't worked on the project follow [onboarding.md](onboarding.md), and fix what trips them up.
+
+## Remove the ownerless Azure app
+
+Ask WMU IT to delete the ownerless Azure app `li-grafana`, client ID `43d8235c-798b-40c7-832c-89ac9abb73bb` ([why it exists](architecture_decision_records/0005-monitoring-on-grafana-cloud.md#consequences)). It has no owner, credentials or roles, so it's harmless.
 
 ## Tighter deep links
 

@@ -142,7 +142,7 @@ Pausing keeps the cluster, the database, the images and the reserved IP, so the 
 
 ```sh
 make cloud-pause     # pods to 0, delete the Ingress (load balancer), stop Cloud SQL
-make cloud-resume    # start Cloud SQL, pods back to 1, re-create the Ingress (~5–10 min)
+make cloud-resume    # start Cloud SQL, pods back to 1, re-create the Ingress (~15–20 min, then 5–10 for the load balancer)
 make cloud-status    # what's running and billed right now
 ```
 

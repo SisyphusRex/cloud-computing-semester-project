@@ -104,6 +104,30 @@ run_backup() {
 
 sql() { run gcloud sql instances patch "$SQL_INSTANCE" --project "$PROJECT" --quiet "$@"; }
 
+# Starting a stopped db-f1-micro takes 9-14 minutes, and gcloud gives up waiting
+# after about 10, so resume starts it with --async and waits here instead. Cloud
+# SQL runs one operation at a time, so a re-run waits out the earlier start too.
+wait_for_sql() {
+  [[ ${DRY_RUN:-0} == 1 ]] && return 0
+  # 30 minutes.
+  for _ in $(seq 180); do
+    [[ -z $(gcloud sql operations list --instance "$SQL_INSTANCE" --project "$PROJECT" \
+      --filter='NOT status:DONE' --format='value(name)') ]] && return 0
+    sleep 10
+  done
+  echo "Cloud SQL $SQL_INSTANCE is still updating after 30 minutes. Run this again once it's done." >&2
+  return 1
+}
+
+check_sql_running() {
+  [[ ${DRY_RUN:-0} == 1 ]] && return 0
+  local state
+  state=$(gcloud sql instances describe "$SQL_INSTANCE" --project "$PROJECT" --format='value(state)')
+  [[ $state == RUNNABLE ]] && return 0
+  echo "Cloud SQL $SQL_INSTANCE is $state: check SQL > li-pg > Operations in the console." >&2
+  return 1
+}
+
 # Progress: "==> [2/4] Delete the load balancer (expected: 1-5 min)", then how
 # long the step actually took, and the total at the end.
 STEP=0
@@ -185,9 +209,13 @@ pause() {
 
 resume() {
   STEPS=5
-  echo "Resuming $PROJECT: usually 5-10 minutes here, then 5-10 more until the load balancer serves traffic."
-  step "Start Cloud SQL $SQL_INSTANCE; waits until it's running" "2-5 min"
-  sql --activation-policy=ALWAYS
+  echo "Resuming $PROJECT: usually 15-20 minutes here, then 5-10 more until the load balancer serves traffic."
+  step "Start Cloud SQL $SQL_INSTANCE; waits until it's running" "9-15 min"
+  wait_for_sql
+  sql --activation-policy=ALWAYS --async
+  [[ ${DRY_RUN:-0} == 1 ]] || sleep 15  # So the new operation is listed.
+  wait_for_sql
+  check_sql_running
   step "Connect to the cluster" "seconds"
   connect
   if app_deployed; then

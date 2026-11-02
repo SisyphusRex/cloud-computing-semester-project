@@ -20,7 +20,7 @@ Grafana stores no metrics of its own. Each time a panel refreshes, it queries on
 | Google Cloud Monitoring | `li-gcp` | Everything except the Azure row |
 | Azure Monitor | `li-azure` | The Azure row |
 
-The dashboard refreshes every 5 minutes, and its default range is the last 7 days. Most panels set their own shorter range and ignore that setting, as noted below. Only the Backups and Azure rows use it.
+The dashboard refreshes every minute, and its default range is the last 7 days. Most panels set their own shorter range and ignore that setting, as noted below. Only the Backups and Azure rows use it.
 
 Numbers come from three kinds of source:
 
@@ -63,12 +63,12 @@ Six Up or Down tiles. A tile with no data shows Down.
 
 | Tile | Metric | Filter | Aligner, reducer, period | Time range | Up when |
 |---|---|---|---|---|---|
-| Database | `cloudsql.googleapis.com/database/up` | None | `ALIGN_MEAN`, `REDUCE_MIN`, 300s | 15 min | Latest value is at least 0.5 |
+| Database | `cloudsql.googleapis.com/database/up` | None | `ALIGN_MIN`, `REDUCE_MIN`, 60s | 5 min | Latest value is 1 |
 | Backups | `user/backup_succeeded` | None | `ALIGN_SUM`, `REDUCE_SUM`, 3600s | 26 h | Total is at least 1 |
 | Frontend | `monitoring.googleapis.com/uptime_check/check_passed` | Host is the Cloud Run address | `ALIGN_FRACTION_TRUE`, `REDUCE_MEAN`, 300s | 15 min | At least half of the latest checks passed |
 | Load balancer | `monitoring.googleapis.com/uptime_check/check_passed` | Host is the API address | `ALIGN_FRACTION_TRUE`, `REDUCE_MEAN`, 300s | 15 min | At least half of the latest checks passed |
-| Ingest pods | `kubernetes.io/container/uptime` | [Pod filter](#pod-filter), `ingest-.*` | `ALIGN_MEAN`, `REDUCE_COUNT`, 60s | 15 min | Latest count is at least 1 |
-| Search pods | `kubernetes.io/container/uptime` | [Pod filter](#pod-filter), `search-.*` | `ALIGN_MEAN`, `REDUCE_COUNT`, 60s | 15 min | Latest count is at least 1 |
+| Ingest pods | `kubernetes.io/container/uptime` | [Pod filter](#pod-filter), `ingest-.*` | `ALIGN_MEAN`, `REDUCE_COUNT`, 60s | 3 min | Latest count is at least 1 |
+| Search pods | `kubernetes.io/container/uptime` | [Pod filter](#pod-filter), `search-.*` | `ALIGN_MEAN`, `REDUCE_COUNT`, 60s | 3 min | Latest count is at least 1 |
 
 These tiles have limits:
 

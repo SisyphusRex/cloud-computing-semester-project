@@ -45,4 +45,4 @@ Three things shaped the design:
 - **Only the app's owner can rotate the Azure secret.** The script finds the app through `az ad app list --show-mine`.
 - **The Azure app lives in WMU's tenant,** so its policies or the owner's account status could change. Azure charts would stop, but nothing else would.
 - **Azure's charts show storage, not recoverability.** The [restore test](../runbooks/backup-and-restore.md#test-a-restore) still proves a backup works.
-- **An app without an owner can't be fixed by a non-admin user.** Our first app was created with no owner, because `azuread_application` doesn't add one, and it couldn't be changed or given a service principal. `grafana.tf` now sets `owners`, and the old app needs removing by WMU IT ([to-do list](../todo.md#finish-the-grafana-setup)).
+- **An app without an owner can't be fixed by a non-admin user.** Our first app was created with no owner, because `azuread_application` doesn't add one, and it couldn't be changed or given a service principal. `grafana.tf` now sets `owners`, and the old app needs removing by WMU IT ([wishlist](../wishlist.md#remove-the-ownerless-azure-app)).

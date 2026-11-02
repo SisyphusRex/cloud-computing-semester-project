@@ -2,7 +2,7 @@
 
 What we did on 2026-10-31 to start backing up the production database to Azure, in order, with the results and the problems we hit. This is the record of that setup. The design is in [ADR 0004](../../architecture_decision_records/0004-database-backups-to-azure.md), and day-to-day commands are in the [backup runbook](../../runbooks/backup-and-restore.md).
 
-> **Record of 2026-10-31.** The states below are as they were that day. For how to do this now, use the [backup runbook](../../runbooks/backup-and-restore.md); for what's still open, the [to-do list](../../todo.md#finish-the-backup-setup).
+> **Record of 2026-10-31.** The states below are as they were that day. For how to do this now, use the [backup runbook](../../runbooks/backup-and-restore.md); for what's still open, the [to-do list](../../todo.md).
 
 Times are UTC. None of the values here are secrets. The private key, its passphrase and the SAS aren't in this repository, and must never be.
 
@@ -158,4 +158,4 @@ The job failed after its retries, and the "Database backup failed" email arrived
 
 ## Later changes
 
-How to add teammates to the alert is now in the [backup runbook](../../runbooks/backup-and-restore.md#add-teammates-to-the-failure-alert). What was still open after this setup is in the [to-do list](../../todo.md#finish-the-backup-setup).
+How to add teammates to the alert is now in the [backup runbook](../../runbooks/backup-and-restore.md#add-teammates-to-the-failure-alert). What was still open after this setup is in the [to-do list](../../todo.md).

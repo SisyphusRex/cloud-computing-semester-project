@@ -6,7 +6,7 @@
     "lecture-indexer"
   ],
   "timezone": "browser",
-  "refresh": "5m",
+  "refresh": "1m",
   "schemaVersion": 39,
   "editable": true,
   "time": {
@@ -45,9 +45,9 @@
     {
       "id": 3,
       "title": "Database",
-      "description": "Built-in metric. Cloud SQL reports the instance as up.",
+      "description": "Built-in metric. Cloud SQL reported up in its latest minute of the last 5 minutes. Goes Down within about 5 minutes of it stopping.",
       "type": "stat",
-      "timeFrom": "15m",
+      "timeFrom": "5m",
       "hideTimeOverride": true,
       "gridPos": {
         "h": 4,
@@ -74,10 +74,10 @@
               "=",
               "cloudsql.googleapis.com/database/up"
             ],
-            "perSeriesAligner": "ALIGN_MEAN",
+            "perSeriesAligner": "ALIGN_MIN",
             "crossSeriesReducer": "REDUCE_MIN",
             "groupBys": [],
-            "alignmentPeriod": "300s",
+            "alignmentPeriod": "60s",
             "view": "FULL",
             "preprocessor": "none"
           }
@@ -108,7 +108,7 @@
               },
               {
                 "color": "green",
-                "value": 0.5
+                "value": 1
               }
             ]
           },
@@ -116,7 +116,7 @@
             {
               "type": "range",
               "options": {
-                "from": 0.5,
+                "from": 1,
                 "to": 1000000,
                 "result": {
                   "text": "Up",
@@ -129,7 +129,7 @@
               "type": "range",
               "options": {
                 "from": -1,
-                "to": 0.499,
+                "to": 0.999,
                 "result": {
                   "text": "Down",
                   "color": "red",
@@ -453,9 +453,9 @@
     {
       "id": 37,
       "title": "Ingest pods",
-      "description": "Built-in metric. At least one ingest pod reported in the last 15 minutes.",
+      "description": "Built-in metric. At least one ingest pod reported in the last 3 minutes. Goes Down within about 3 minutes of the pods stopping. A crash-looping pod can still count.",
       "type": "stat",
-      "timeFrom": "15m",
+      "timeFrom": "3m",
       "hideTimeOverride": true,
       "gridPos": {
         "h": 4,
@@ -565,9 +565,9 @@
     {
       "id": 38,
       "title": "Search pods",
-      "description": "Built-in metric. At least one search pod reported in the last 15 minutes.",
+      "description": "Built-in metric. At least one search pod reported in the last 3 minutes. Goes Down within about 3 minutes of the pods stopping. A crash-looping pod can still count.",
       "type": "stat",
-      "timeFrom": "15m",
+      "timeFrom": "3m",
       "hideTimeOverride": true,
       "gridPos": {
         "h": 4,
