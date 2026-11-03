@@ -1,0 +1,5 @@
+# Check out text files with LF line endings on every platform, whatever
+# core.autocrlf says. Scripts, the Makefile and files copied into Linux
+# images break with CRLF ("/usr/bin/env: 'bash\r': No such file or directory").
+# Git detects binary files (images, PDFs) itself and leaves them alone.
+* text=auto eol=lf
