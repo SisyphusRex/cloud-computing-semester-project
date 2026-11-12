@@ -254,6 +254,9 @@ The estimates below are **rough and still to be checked** in the GCP pricing cal
 | 100,000 | Upsize Cloud SQL to a dedicated-core tier, maybe add a read replica for Search. HPA maximums raised. Cloud Run leaves its free tier. YouTube API quota (10,000 units/day, ~252 per lecture) needs an increase. Add Cloud Armor rate limiting | low hundreds of dollars (to estimate) |
 
 - **Compare to VM pricing:** one small always-on VM (e.g. e2-medium, ~$25/month, to verify) running everything would be cheaper at 1–100 users. But it has no autoscaling, no managed database backups or patching, no HTTPS load balancer or managed certificate, and is a single point of failure. Our setup costs more at the low end, pausing brings it down to ~$9, and it scales without being re-architected.
+- **Owned-hardware sources** (prices as listed on 2026-11-11):
+  - Computer: [Dell OptiPlex 7060 Micro, refurbished (i5-8500T, 8 GB, 256 GB SSD) at Best Buy](https://www.bestbuy.com/product/dell-optiplex-7060-micro-desktop-intel-core-i5-8500t-8gb-memory-256gb-ssd-black/J3P8K45RZQ/sku/13183000), $229.99
+  - Internet: [AT&T Business Fiber](https://www.business.att.com/products/business-fiber-internet.html), Business Fiber 300 (300 Mbps), $60/month plus taxes and fees
 
 ### 2.4 AI Usage reflection
 
