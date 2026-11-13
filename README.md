@@ -43,9 +43,13 @@ make smoke           # end-to-end check of the running APIs
 cp frontend/.env.example frontend/.env.local   # first time; dev sign-in
 make frontend-install
 make frontend-dev    # http://localhost:5173
+
+# When you're done (Ctrl-C stops the frontend first):
+make dev-down        # stops Postgres and the APIs; keeps the database
+make dev-reset       # same, and deletes the database volume
 ```
 
-Sign in as `prof@example.edu` (professor) or `student@example.edu`. Registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [real Google test](docs/runbooks/real-google-test.md). Stop with `Ctrl-C` and `make dev-down`.
+Sign in as `prof@example.edu` (professor) or `student@example.edu`. Registering a lecture needs real Google sign-in, because the Ingest API calls YouTube with your token; see the [real Google test](docs/runbooks/real-google-test.md).
 
 API reference and configuration: [services/README.md](services/README.md). Run `make help` for every target. CI (`.github/workflows/ci.yml`) runs the tests and checks on every push.
 
