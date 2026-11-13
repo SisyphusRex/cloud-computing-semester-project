@@ -102,6 +102,9 @@ export function createApi({ base, getToken, onUnauthorized }: ClientOptions) {
     getLecture: (lectureId: number) => request<IngestLecture>(`/ingest/lectures/${lectureId}`),
     deleteLecture: (lectureId: number) =>
       request<void>(`/ingest/lectures/${lectureId}`, { method: "DELETE" }),
+    // The course's owner, or any admin.
+    deleteCourse: (courseId: number) =>
+      request<void>(`/ingest/courses/${courseId}`, { method: "DELETE" }),
 
     // Ingest API: admins only.
     listUsers: () => request<{ users: AdminUser[] }>("/ingest/admin/users").then((r) => r.users),
@@ -109,7 +112,8 @@ export function createApi({ base, getToken, onUnauthorized }: ClientOptions) {
       request<InviteResult>("/ingest/admin/users", { method: "POST", body: { emails, role } }),
     updateUser: (userId: number, changes: UserChanges) =>
       request<AdminUser>(`/ingest/admin/users/${userId}`, { method: "PATCH", body: changes }),
-    deleteInvitation: (userId: number) =>
+    /** An invitation, or an account together with the courses it owns. */
+    deleteUser: (userId: number) =>
       request<void>(`/ingest/admin/users/${userId}`, { method: "DELETE" }),
   };
 }

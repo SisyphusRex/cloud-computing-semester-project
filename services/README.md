@@ -56,9 +56,9 @@ Every endpoint except the health checks needs `Authorization: Bearer <Google ID 
 | `GET` | `/ingest/admin/users` | admin | | all users, each with `status`: `invited`, `active` or `disabled` |
 | `POST` | `/ingest/admin/users` | admin | `{"emails": [...], "role": "student"}` | `201` `{"created": [users], "already_exists": [emails]}` |
 | `PATCH` | `/ingest/admin/users/{id}` | admin | any of `role`, `is_active`, `is_admin` | the updated user |
-| `DELETE` | `/ingest/admin/users/{id}` | admin | | `204`; only for invitations nobody has claimed (`409` otherwise: disable instead) |
+| `DELETE` | `/ingest/admin/users/{id}` | admin | | `204`; deletes an invitation, or an account and every course it owns ([ADR 0006](../docs/architecture_decision_records/0006-hard-delete-users-and-courses.md)) |
 
-On their own account, an admin can change only `role`, so the API can't remove the last admin.
+On their own account, an admin can change only `role`, and can't delete it, so the API can't remove the last admin.
 
 ### Ingest (professor role)
 
@@ -69,6 +69,7 @@ On their own account, an admin can change only `role`, so the API can't remove t
 | `POST` | `/ingest/courses/{id}/lectures` | `{"video": "<YouTube URL or ID>"}` + `X-YouTube-Token: <OAuth access token>` | `201` lecture with `status: "indexed"`, `segment_count` and `embeddable` |
 | `GET` | `/ingest/lectures/{id}` | | lecture status, including `error` when `failed` |
 | `DELETE` | `/ingest/lectures/{id}` | | `204` |
+| `DELETE` | `/ingest/courses/{id}` | | `204`, with its lectures; `404` unless it's yours. Admins can delete any course, whatever their role |
 
 The YouTube access token needs the `https://www.googleapis.com/auth/youtube.force-ssl` scope (the caption endpoints accept no narrower one). It is used for that request only and never stored or logged. Registering a lecture fails with `403 not_video_owner` unless the video belongs to the signed-in account's channel, `422 no_captions` if it has no auto-generated (ASR) caption track (tracks the creator uploaded are ignored), and `503 youtube_quota` when the API quota is exhausted. Re-registering a video re-indexes it. A video whose owner turned off "Allow embedding" is still indexed, with `embeddable: false`; re-registering picks up a changed setting.
 
@@ -116,5 +117,6 @@ Logs are one JSON object per line for Cloud Logging. These events are what the m
 | `sign_in_not_invited` | none |
 | `users_invited` | `actor_id`, `role`, `created` |
 | `user_updated` | `actor_id`, `target_id`, the changed fields |
-| `invitation_deleted` | `actor_id`, `target_id` |
+| `user_deleted` | `actor_id`, `target_id`, `invitation`, `courses_deleted` |
+| `course_deleted` | `actor_id`, `course_id`, `owner_id` |
 | `backup_succeeded` / `backup_failed` | `name`, `bytes` / `name` (from the backup CronJob) |

@@ -155,6 +155,32 @@ def test_video_without_auto_captions_marks_lecture_failed(client, auth, course_i
     assert lecture.json["error"] == "The video has no auto-generated captions"
 
 
+def test_owner_deletes_course_and_its_lectures(client, auth, course_id):
+    lecture_id = register(client, auth, course_id).json["id"]
+    assert client.delete(f"/ingest/courses/{course_id}", headers=auth(PROF)).status_code == 204
+    assert client.get(f"/ingest/lectures/{lecture_id}", headers=auth(PROF)).status_code == 404
+    assert client.get("/ingest/courses", headers=auth(PROF)).json["courses"] == []
+
+
+def test_other_professor_cannot_delete_course(client, auth, invite, course_id):
+    invite("other@example.edu", "professor")
+    resp = client.delete(f"/ingest/courses/{course_id}", headers=auth("other@example.edu"))
+    assert resp.status_code == 404
+    assert len(client.get("/ingest/courses", headers=auth(PROF)).json["courses"]) == 1
+
+
+def test_admin_deletes_any_course(client, auth, invite, course_id):
+    invite("admin@example.edu", "student", admin=True)
+    resp = client.delete(f"/ingest/courses/{course_id}", headers=auth("admin@example.edu"))
+    assert resp.status_code == 204
+    assert client.get("/ingest/courses", headers=auth(PROF)).json["courses"] == []
+
+
+def test_student_cannot_delete_course(client, auth, course_id):
+    resp = client.delete(f"/ingest/courses/{course_id}", headers=auth("student@example.edu"))
+    assert resp.status_code == 403
+
+
 def test_delete_lecture(client, auth, course_id):
     lecture_id = register(client, auth, course_id).json["id"]
     assert client.delete(f"/ingest/lectures/{lecture_id}", headers=auth(PROF)).status_code == 204

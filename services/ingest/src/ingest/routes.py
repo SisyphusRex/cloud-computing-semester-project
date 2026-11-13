@@ -145,6 +145,28 @@ def delete_lecture(lecture_id: int):
     return "", 204
 
 
+@bp.delete("/courses/<int:course_id>")
+@require_user()
+def delete_course(course_id: int):
+    """The owner or any admin; lectures and segments cascade (ADR 0006)."""
+    if not (g.user.is_admin or g.user.role == "professor"):
+        abort(403, "Requires the professor role")
+    with db.connection() as conn:
+        row = conn.execute(
+            """
+            DELETE FROM courses WHERE id = %s AND (owner_id = %s OR %s)
+            RETURNING id, owner_id
+            """,
+            (course_id, g.user.id, g.user.is_admin),
+        ).fetchone()
+    if row is None:
+        abort(404, "Course not found")
+    log_event(
+        logger, "course_deleted", actor_id=g.user.id, course_id=course_id, owner_id=row["owner_id"]
+    )
+    return "", 204
+
+
 def _owned_course_or_404(course_id: int) -> None:
     # Someone else's course is reported as missing rather than forbidden.
     with db.connection() as conn:

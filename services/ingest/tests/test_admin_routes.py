@@ -48,6 +48,7 @@ def test_non_admins_cannot_use_admin_endpoints(client, auth, email):
     assert (
         client.patch("/ingest/admin/users/1", json={"role": "professor"}, headers=headers)
     ).status_code == 403
+    assert client.delete("/ingest/admin/users/1", headers=headers).status_code == 403
 
 
 def test_admin_invites_in_bulk_and_the_invitee_can_sign_in(client, auth, database_url):
@@ -152,7 +153,7 @@ def test_admin_cancels_an_admins_invitation(client, auth, invite):
     assert client.delete(f"/ingest/admin/users/{target}", headers=auth(ADMIN)).status_code == 204
 
 
-def test_delete_only_unclaimed_invitations(client, auth, database_url):
+def test_delete_invitation(client, auth, database_url):
     client.post(
         "/ingest/admin/users",
         json={"emails": ["typo@example.edu"], "role": "student"},
@@ -162,11 +163,61 @@ def test_delete_only_unclaimed_invitations(client, auth, database_url):
     assert client.delete(f"/ingest/admin/users/{typo}", headers=auth(ADMIN)).status_code == 204
     assert _audit(database_url)[-1][:2] == ("delete_invitation", {"email": "typo@example.edu"})
 
-    client.get("/ingest/me", headers=auth(STUDENT))  # claims the invitation
-    student = _id(client, auth, STUDENT)
-    assert client.delete(f"/ingest/admin/users/{student}", headers=auth(ADMIN)).status_code == 409
+
+def test_deleting_a_professor_deletes_their_courses(client, auth, database_url):
+    resp = client.post(
+        "/ingest/courses", json={"code": "CS6030", "title": "Cloud"}, headers=auth(PROF)
+    )
+    course = resp.json["id"]
+    with psycopg.connect(database_url) as conn:
+        lecture = conn.execute(
+            "INSERT INTO lectures (course_id, youtube_video_id) VALUES (%s, 'abcdefghijk') "
+            "RETURNING id",
+            (course,),
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO segments (lecture_id, start_ms, end_ms, text) VALUES (%s, 0, 1, 'hi')",
+            (lecture,),
+        )
+
+    prof = _id(client, auth, PROF)
+    assert client.delete(f"/ingest/admin/users/{prof}", headers=auth(ADMIN)).status_code == 204
+
+    with psycopg.connect(database_url) as conn:
+        for table in ("courses", "lectures", "segments"):
+            assert conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0] == 0
+    action, detail, actor = _audit(database_url)[-1]
+    assert (action, actor) == ("delete_user", ADMIN)
+    assert detail == {"email": PROF, "role": "professor", "courses_deleted": 1}
+    assert client.get("/ingest/me", headers=auth(PROF)).json["error"] == "not_invited"
+
+
+def test_deleting_an_admin_keeps_their_audit_rows(client, auth, database_url):
+    client.post(
+        "/ingest/admin/users",
+        json={"emails": ["invitee@example.edu"], "role": "student"},
+        headers=auth(OTHER_ADMIN),
+    )
+    other = _id(client, auth, OTHER_ADMIN)
+    assert client.delete(f"/ingest/admin/users/{other}", headers=auth(ADMIN)).status_code == 204
+
+    with psycopg.connect(database_url) as conn:
+        assert conn.execute(
+            "SELECT invited_by FROM users WHERE email = 'invitee@example.edu'"
+        ).fetchone() == (None,)
+        assert conn.execute(
+            "SELECT actor_id FROM user_audit WHERE action = 'invite' "
+            "AND target_id = (SELECT id FROM users WHERE email = 'invitee@example.edu')"
+        ).fetchone() == (None,)
+
+
+def test_admins_cannot_delete_themselves(client, auth):
+    me = _id(client, auth, ADMIN)
+    assert client.delete(f"/ingest/admin/users/{me}", headers=auth(ADMIN)).status_code == 403
+    assert client.get("/ingest/me", headers=auth(ADMIN)).status_code == 200
 
 
 def test_unknown_user_is_404(client, auth):
     resp = client.patch("/ingest/admin/users/999999", json={"role": "student"}, headers=auth(ADMIN))
     assert resp.status_code == 404
+    assert client.delete("/ingest/admin/users/999999", headers=auth(ADMIN)).status_code == 404

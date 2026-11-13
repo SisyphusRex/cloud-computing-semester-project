@@ -22,11 +22,12 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
     registerLecture: missing("registerLecture"),
     getLecture: missing("getLecture"),
     deleteLecture: missing("deleteLecture"),
+    deleteCourse: missing("deleteCourse"),
     me: missing("me"),
     listUsers: missing("listUsers"),
     inviteUsers: missing("inviteUsers"),
     updateUser: missing("updateUser"),
-    deleteInvitation: missing("deleteInvitation"),
+    deleteUser: missing("deleteUser"),
   };
   return { ...api, ...overrides } as Api;
 }

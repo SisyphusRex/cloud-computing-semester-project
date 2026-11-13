@@ -100,6 +100,17 @@ function CourseCard({ course, onChange }: { course: MyCourse; onChange: () => vo
     }
   }
 
+  async function deleteCourse() {
+    const lectureCount = `${course.lecture_count} lecture${course.lecture_count === 1 ? "" : "s"}`;
+    if (!window.confirm(`Delete ${course.code} and its ${lectureCount}? This can't be undone.`)) return;
+    try {
+      await api.deleteCourse(course.id);
+      onChange();
+    } catch (e) {
+      setError(e);
+    }
+  }
+
   async function remove(lectureId: number) {
     try {
       await api.deleteLecture(lectureId);
@@ -112,9 +123,14 @@ function CourseCard({ course, onChange }: { course: MyCourse; onChange: () => vo
 
   return (
     <article className="card">
-      <h2>
-        {course.code} {course.title}
-      </h2>
+      <div className="card-header">
+        <h2>
+          {course.code} {course.title}
+        </h2>
+        <button type="button" className="link" onClick={deleteCourse}>
+          Delete course
+        </button>
+      </div>
       <form onSubmit={register} className="row">
         <label>
           YouTube video URL or ID (from your channel, with YouTube auto-generated captions)

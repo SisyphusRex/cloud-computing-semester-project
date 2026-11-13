@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { AdminUser } from "../api/types";
+import type { AdminUser, Course } from "../api/types";
 import { fakeApi, renderPage } from "../test/render";
 import { AdminPage, parseEmails } from "./AdminPage";
 
@@ -27,8 +27,16 @@ const USERS = [
   user(5, "invited@example.edu", { status: "invited" }),
 ];
 
+const COURSES: Course[] = [
+  { id: 7, code: "CS6030", title: "Cloud", professor: "Prof", lecture_count: 2 },
+];
+
 function setup(overrides = {}, refreshMe?: () => Promise<void>) {
-  const api = fakeApi({ listUsers: vi.fn(() => Promise.resolve(USERS)), ...overrides });
+  const api = fakeApi({
+    listUsers: vi.fn(() => Promise.resolve(USERS)),
+    listCourses: vi.fn(() => Promise.resolve(COURSES)),
+    ...overrides,
+  });
   renderPage(<AdminPage />, { api, role: "student", me: ME, refreshMe, path: "/admin", url: "/admin" });
   return api;
 }
@@ -104,11 +112,40 @@ describe("<AdminPage>", () => {
   });
 
   it("cancels an invitation nobody has claimed", async () => {
-    const deleteInvitation = vi.fn(() => Promise.resolve());
-    setup({ deleteInvitation });
+    const deleteUser = vi.fn(() => Promise.resolve());
+    setup({ deleteUser });
 
     const row = (await screen.findByText("invited@example.edu")).closest("tr")!;
     await userEvent.click(within(row).getByRole("button", { name: "Cancel invitation" }));
-    expect(deleteInvitation).toHaveBeenCalledWith(5);
+    expect(deleteUser).toHaveBeenCalledWith(5);
+  });
+
+  it("deletes a signed-in user after confirming, then reloads users and courses", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const deleteUser = vi.fn(() => Promise.resolve());
+    const api = setup({ deleteUser });
+
+    const row = (await screen.findByText("student@example.edu")).closest("tr")!;
+    const button = within(row).getByRole("button", { name: "Delete" });
+    await userEvent.click(button);
+    expect(deleteUser).not.toHaveBeenCalled();
+
+    await userEvent.click(button);
+    expect(deleteUser).toHaveBeenCalledWith(4);
+    expect(confirm).toHaveBeenLastCalledWith(expect.stringContaining("student@example.edu"));
+    await vi.waitFor(() => expect(api.listCourses).toHaveBeenCalledTimes(2));
+    confirm.mockRestore();
+  });
+
+  it("lists every course and deletes one after confirming", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const deleteCourse = vi.fn(() => Promise.resolve());
+    setup({ deleteCourse });
+
+    const row = (await screen.findByText("CS6030 Cloud")).closest("tr")!;
+    expect(row).toHaveTextContent("Prof");
+    await userEvent.click(within(row).getByRole("button", { name: "Delete CS6030" }));
+    expect(deleteCourse).toHaveBeenCalledWith(7);
+    confirm.mockRestore();
   });
 });

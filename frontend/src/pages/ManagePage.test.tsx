@@ -21,12 +21,13 @@ const indexed = {
   embeddable: true,
 };
 
-function setup(registerLecture: Api["registerLecture"]) {
+function setup(registerLecture: Api["registerLecture"], overrides: Partial<Api> = {}) {
   const requestYouTubeToken = vi.fn(() => Promise.resolve("yt-token"));
   const api = fakeApi({
     myCourses: vi.fn(() => Promise.resolve([myCourse])),
     listLectures: vi.fn(() => Promise.resolve([])),
     registerLecture,
+    ...overrides,
   });
   renderPage(<ManagePage />, {
     api,
@@ -35,10 +36,26 @@ function setup(registerLecture: Api["registerLecture"]) {
     path: "/manage",
     url: "/manage",
   });
-  return { requestYouTubeToken };
+  return { requestYouTubeToken, api };
 }
 
 describe("<ManagePage>", () => {
+  it("deletes a course only after confirming", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const deleteCourse = vi.fn(() => Promise.resolve());
+    const { api } = setup(vi.fn(), { deleteCourse });
+
+    const button = await screen.findByRole("button", { name: "Delete course" });
+    await userEvent.click(button);
+    expect(deleteCourse).not.toHaveBeenCalled();
+
+    await userEvent.click(button);
+    expect(deleteCourse).toHaveBeenCalledWith(1);
+    expect(confirm).toHaveBeenLastCalledWith("Delete CS6030 and its 0 lectures? This can't be undone.");
+    await vi.waitFor(() => expect(api.myCourses).toHaveBeenCalledTimes(2));
+    confirm.mockRestore();
+  });
+
   it("asks for YouTube access, then registers the lecture with that token", async () => {
     const registerLecture = vi.fn(() => Promise.resolve(indexed));
     const { requestYouTubeToken } = setup(registerLecture);

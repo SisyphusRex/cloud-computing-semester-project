@@ -1,8 +1,9 @@
 """Who am I, and user administration (ADRs 0002 and 0003).
 
 Admins invite emails as students or professors, change roles (their own
-included), grant and revoke admin, and disable accounts. Nobody can disable
-themselves or change their own admin flag, so the API always leaves an admin.
+included), grant and revoke admin, disable accounts, and delete them (ADR
+0006). Nobody can disable or delete themselves or change their own admin flag,
+so the API always leaves an admin.
 The first admin comes from `li-admin create-admin`. Every change is audited in
 user_audit, in the same transaction.
 """
@@ -72,19 +73,42 @@ def update_user(user_id: int):
 
 @bp.delete("/admin/users/<int:user_id>")
 @require_user(admin=True)
-def delete_invitation(user_id: int):
-    """Only invitations nobody has claimed; accounts in use are disabled instead,
-    because their courses and audit history reference them."""
+def delete_user(user_id: int):
+    """Deletes an invitation or an account. An account's courses go with it
+    (lectures and segments cascade); audit rows they made keep a NULL actor."""
+    if user_id == g.user.id:
+        abort(403, "You can't delete your own account")
     with db.connection() as conn:
         row = conn.execute(
-            "SELECT email, google_sub FROM users WHERE id = %s", (user_id,)
+            """
+            SELECT u.email, u.role, u.google_sub,
+                   (SELECT count(*) FROM courses c WHERE c.owner_id = u.id) AS courses
+            FROM users u WHERE u.id = %s FOR UPDATE
+            """,
+            (user_id,),
         ).fetchone()
         if row is None:
             abort(404, "User not found")
-        if row["google_sub"] is not None:
-            abort(409, "This account has signed in; disable it instead")
         # The audit row outlives the user (target_id becomes NULL), so keep the email.
-        users.audit(conn, g.user.id, user_id, "delete_invitation", email=row["email"])
+        if row["google_sub"] is None:
+            users.audit(conn, g.user.id, user_id, "delete_invitation", email=row["email"])
+        else:
+            users.audit(
+                conn,
+                g.user.id,
+                user_id,
+                "delete_user",
+                email=row["email"],
+                role=row["role"],
+                courses_deleted=row["courses"],
+            )
         conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
-    log_event(logger, "invitation_deleted", actor_id=g.user.id, target_id=user_id)
+    log_event(
+        logger,
+        "user_deleted",
+        actor_id=g.user.id,
+        target_id=user_id,
+        invitation=row["google_sub"] is None,
+        courses_deleted=row["courses"],
+    )
     return "", 204
