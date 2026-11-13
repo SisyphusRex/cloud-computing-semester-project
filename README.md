@@ -1,7 +1,5 @@
 # Lecture Indexer (LI)
 
-TEST
-
 Timestamped keyword search over recorded lectures. A professor registers a YouTube lecture; LI fetches its timed captions through the YouTube Data API and indexes them. A student searches a course for a term and gets every lecture and timestamp where it is spoken, linked straight to that moment (`youtube.com/watch?v=…&t=202s`).
 
 CS 6030 Cloud Computing semester project, Western Michigan University, Fall 2026: Theodore Podewil, Joshua Jubenville, Andrew Wojciechowski.
