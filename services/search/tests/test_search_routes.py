@@ -117,9 +117,9 @@ def test_list_courses_and_lectures(client, auth, seeded):
         f"/search/courses/{seeded['cloud']}/lectures", headers=auth(STUDENT)
     ).json["lectures"]
     assert [(lec["title"], lec["embeddable"]) for lec in lectures] == [("Fall Lecture 4", True)]
-    other = client.get(
-        f"/search/courses/{seeded['other']}/lectures", headers=auth(STUDENT)
-    ).json["lectures"]
+    other = client.get(f"/search/courses/{seeded['other']}/lectures", headers=auth(STUDENT)).json[
+        "lectures"
+    ]
     assert [(lec["video_id"], lec["embeddable"]) for lec in other] == [("otherxyzabc", False)]
 
 
