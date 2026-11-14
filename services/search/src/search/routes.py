@@ -33,7 +33,7 @@ def list_lectures(course_id: int):
         _course_or_404(conn, course_id)
         rows = conn.execute(
             """
-            SELECT id, youtube_video_id AS video_id, title, indexed_at
+            SELECT id, youtube_video_id AS video_id, title, indexed_at, embeddable
             FROM lectures
             WHERE course_id = %s AND status = 'indexed'
             ORDER BY created_at

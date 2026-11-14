@@ -21,6 +21,8 @@ export interface IndexedLecture {
   video_id: string;
   title: string;
   indexed_at: string;
+  /** False when the owner turned off embedding; link to youtube.com instead. */
+  embeddable: boolean;
 }
 
 export interface IngestLecture {

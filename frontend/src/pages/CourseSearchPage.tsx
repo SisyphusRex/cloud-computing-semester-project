@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { useApi } from "../api/ApiContext";
-import type { Course, SearchHit, SearchResponse } from "../api/types";
+import type { Course, IndexedLecture, SearchHit, SearchResponse } from "../api/types";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { Excerpt } from "../components/Excerpt";
 import { VideoPlayer } from "../components/VideoPlayer";
@@ -24,6 +24,8 @@ export function CourseSearchPage() {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [courseError, setCourseError] = useState<unknown>(null);
+  const [lectures, setLectures] = useState<IndexedLecture[] | null>(null);
+  const [lecturesError, setLecturesError] = useState<unknown>(null);
   const [draft, setDraft] = useState(query);
   // Each outcome remembers which search it answers; until the current one's
   // arrives, we're searching.
@@ -34,6 +36,10 @@ export function CourseSearchPage() {
     api
       .listCourses()
       .then((courses) => setCourse(courses.find((c) => c.id === courseId) ?? null), setCourseError);
+  }, [api, courseId]);
+
+  useEffect(() => {
+    api.listLectures(courseId).then(setLectures, setLecturesError);
   }, [api, courseId]);
 
   // The query lives in the URL, so results can be bookmarked and shared.
@@ -52,10 +58,17 @@ export function CourseSearchPage() {
   const current = outcome?.key === searchKey ? outcome : null;
   const searching = query !== "" && current === null;
   const results = current?.response ?? null;
-  const playingTitle = results?.hits.find((hit) => hit.video_id === videoId)?.lecture_title;
+  const playingTitle =
+    results?.hits.find((hit) => hit.video_id === videoId)?.lecture_title ??
+    lectures?.find((lecture) => lecture.video_id === videoId)?.title;
 
   function clipSearch(hit: SearchHit) {
     return `?${new URLSearchParams({ q: query, v: hit.video_id, t: String(hit.start_seconds) })}`;
+  }
+
+  // Opening a lecture from the top keeps the current search results.
+  function lectureSearch(lecture: IndexedLecture) {
+    return `?${new URLSearchParams({ ...(query && { q: query }), v: lecture.video_id, t: "0" })}`;
   }
 
   function submit(event: FormEvent) {
@@ -80,7 +93,35 @@ export function CourseSearchPage() {
           Search
         </button>
       </form>
-      <ErrorMessage error={courseError ?? current?.error} />
+      {lectures && lectures.length === 0 && <p className="muted">No lectures yet.</p>}
+      {lectures && lectures.length > 0 && (
+        <nav aria-label="Lectures">
+          <ul className="lecture-links">
+            {lectures.map((lecture) => (
+              <li key={lecture.id}>
+                {lecture.embeddable ? (
+                  <Link
+                    to={{ search: lectureSearch(lecture) }}
+                    aria-current={lecture.video_id === videoId || undefined}
+                  >
+                    {lecture.title}
+                  </Link>
+                ) : (
+                  // The professor turned off embedding for this video.
+                  <a
+                    href={`https://www.youtube.com/watch?v=${encodeURIComponent(lecture.video_id)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {lecture.title} <span className="muted">↗ YouTube</span>
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+      <ErrorMessage error={courseError ?? lecturesError ?? current?.error} />
       {videoId && (
         <VideoPlayer
           key={`${videoId}-${start}`}

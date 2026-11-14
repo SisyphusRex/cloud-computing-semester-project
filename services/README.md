@@ -78,7 +78,7 @@ The YouTube access token needs the `https://www.googleapis.com/auth/youtube.forc
 | Method | Path | Result |
 |---|---|---|
 | `GET` | `/search/courses` | all courses with professor name and indexed `lecture_count` |
-| `GET` | `/search/courses/{id}/lectures` | indexed lectures |
+| `GET` | `/search/courses/{id}/lectures` | indexed lectures (`id`, `video_id`, `title`, `indexed_at`, `embeddable`) |
 | `GET` | `/search/courses/{id}/segments?q=<query>&limit=20` | ranked hits |
 
 `q` uses web-search syntax: `"lambda calculus"` for a phrase, `-word` to exclude, `or` for alternatives. Matching is stemmed, so `language` matches "languages". A hit looks like:
