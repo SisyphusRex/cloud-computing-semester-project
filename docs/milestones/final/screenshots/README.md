@@ -4,6 +4,8 @@ Captured on 2026-11-19 with Claude in Chrome, from production and the cloud cons
 
 **Redacted before each capture:** email addresses, people's names, Google and Azure account avatars, the GCP project ID and number, the Azure tenant name, and the Grafana stack name. The redaction only changed what the page displayed. The console header on the Google Cloud pages is blurred.
 
+All 24 are also collected, one per page with these captions, in [LectureIndexer_Screenshots.pdf](LectureIndexer_Screenshots.pdf).
+
 | File | What it shows |
 |---|---|
 | [01-app-signin.png](01-app-signin.png) | The sign-in page |
