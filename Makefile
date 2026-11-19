@@ -7,7 +7,7 @@ TEST_DATABASE_URL ?= postgresql://li:li@localhost:55432/li
 
 .PHONY: help doctor install lint format test test-db dev-up dev-down dev-reset dev-logs smoke \
 	frontend-install frontend-dev frontend-test frontend-image k8s-check docs-check release-diff cloud-status cloud-pause cloud-resume \
-	cloud-backup cloud-backup-sas cloud-restore cloud-grafana-credentials cloud-create-admin cloud-admin report
+	cloud-backup cloud-backup-sas cloud-restore cloud-grafana-credentials cloud-create-admin cloud-admin report final-report
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-24s %s\n", $$1, $$2}'
@@ -109,3 +109,7 @@ cloud-admin: ## Run li-admin in prod (ARGS="list", ARGS="add-user EMAIL --role p
 report: ## Build the Milestone 2 report PDF (needs pdflatex, latexmk, IEEEtran)
 	cd docs/milestones/m2_prototype_review/report && latexmk -pdf -interaction=nonstopmode -halt-on-error m2-report.tex
 	cp docs/milestones/m2_prototype_review/report/m2-report.pdf docs/milestones/m2_prototype_review/CS6030_F26_PrototypeReview_LectureIndexer.pdf
+
+final-report: ## Build the final report PDF (needs pdflatex, latexmk, IEEEtran)
+	cd docs/milestones/final/report && latexmk -pdf -interaction=nonstopmode -halt-on-error final-report.tex
+	cp docs/milestones/final/report/final-report.pdf docs/milestones/final/CS6030_F26_FinalReport_LectureIndexer.pdf

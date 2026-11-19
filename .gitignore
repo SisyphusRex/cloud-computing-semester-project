@@ -245,5 +245,11 @@ docs/milestones/m2_prototype_review/report/*.fls
 docs/milestones/m2_prototype_review/report/*.log
 docs/milestones/m2_prototype_review/report/*.out
 docs/milestones/m2_prototype_review/report/*.pdf
+docs/milestones/final/report/*.aux
+docs/milestones/final/report/*.fdb_latexmk
+docs/milestones/final/report/*.fls
+docs/milestones/final/report/*.log
+docs/milestones/final/report/*.out
+docs/milestones/final/report/*.pdf
 # Unredacted original screenshots (contain email addresses); the redacted copies in figures/ are committed
 docs/milestones/m2_prototype_review/report/figures/liScreenshots/
